@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FireApp — Unisciti al team</title>
+<meta name="description" content="Completa la registrazione per unirti al team su FireApp.">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#073524;--green-mid:#0d6040;--green-light:#16a05e;--green-bright:#22c97a;
+  --red:#dc2626;--border:#e5e7eb;--bg:#f9fafb;--ink:#0a0f0d;--ink-soft:#374151;
+  --ink-muted:#6b7280;--white:#ffffff;--font:'Plus Jakarta Sans',system-ui,sans-serif;
+}
+html,body{height:100%;font-family:var(--font);-webkit-font-smoothing:antialiased}
+body{display:flex;min-height:100vh}
+
+/* LEFT PANEL */
+.left{width:45%;background:var(--green);padding:60px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+.left::before{content:'';position:absolute;bottom:-100px;right:-100px;width:400px;height:400px;border-radius:50%;background:rgba(34,201,122,.08)}
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:48px}
+.logo-mark{width:36px;height:36px;background:rgba(255,255,255,.15);border-radius:9px;display:flex;align-items:center;justify-content:center}
+.logo-mark svg{width:18px;height:18px;stroke:white;fill:none;stroke-width:1.8;stroke-linecap:round}
+.logo-name{font-size:20px;font-weight:800;color:white}
+
+/* Org card */
+.org-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:20px 22px;margin-bottom:32px}
+.org-card-label{font-size:11px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
+.org-name-loading{height:28px;background:rgba(255,255,255,.08);border-radius:6px;animation:shimmer 1.2s infinite}
+@keyframes shimmer{0%,100%{opacity:.4}50%{opacity:.8}}
+.org-name{font-size:22px;font-weight:800;color:white;line-height:1.2;display:none}
+.org-meta{font-size:13px;color:rgba(255,255,255,.5);margin-top:4px;display:none}
+
+.left-headline{font-size:28px;font-weight:800;color:white;line-height:1.2;letter-spacing:-.3px;margin-bottom:14px}
+.left-headline em{color:var(--green-bright);font-style:normal}
+.left-desc{font-size:15px;color:rgba(255,255,255,.6);line-height:1.65;margin-bottom:32px}
+
+.steps{display:flex;flex-direction:column;gap:14px}
+.step{display:flex;align-items:flex-start;gap:12px}
+.step-num{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:white;flex-shrink:0;margin-top:1px}
+.step-text{font-size:14px;color:rgba(255,255,255,.7);line-height:1.45}
+.step-text strong{color:white}
+.left-footer{font-size:12px;color:rgba(255,255,255,.25)}
+
+/* RIGHT PANEL */
+.right{flex:1;padding:60px;display:flex;align-items:center;justify-content:center;background:var(--white)}
+.form-wrap{width:100%;max-width:420px}
+
+/* Error/Invalid state */
+.invalid-state{display:none;text-align:center;padding:40px 0}
+.invalid-icon{font-size:48px;margin-bottom:16px}
+.invalid-title{font-size:20px;font-weight:700;color:var(--ink);margin-bottom:8px}
+.invalid-sub{font-size:14px;color:var(--ink-muted);line-height:1.6}
+
+.form-title{font-size:24px;font-weight:800;color:var(--ink);margin-bottom:6px;letter-spacing:-.2px}
+.form-sub{font-size:15px;color:var(--ink-muted);margin-bottom:28px;line-height:1.5}
+.form-sub a{color:var(--green-light);font-weight:600}
+
+/* Org badge in form */
+.org-badge{display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:20px}
+.org-badge-icon{width:36px;height:36px;border-radius:8px;background:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.org-badge-icon svg{width:16px;height:16px;stroke:white;fill:none;stroke-width:2;stroke-linecap:round}
+.org-badge-name{font-size:14px;font-weight:700;color:var(--ink)}
+.org-badge-sub{font-size:12px;color:var(--ink-muted)}
+.org-badge-loading{height:36px;background:var(--bg);border-radius:6px;flex:1;animation:shimmer 1.2s infinite}
+
+.form-error{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;font-size:14px;color:var(--red);margin-bottom:16px;display:none}
+.form-error.visible{display:block}
+
+.field{margin-bottom:14px}
+.field label{display:block;font-size:13px;font-weight:600;color:var(--ink-soft);margin-bottom:5px}
+.field input{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:15px;font-family:var(--font);background:var(--white);transition:border-color .15s;outline:none}
+.field input:focus{border-color:var(--green-light)}
+.field input.error{border-color:var(--red)}
+.field input[readonly]{background:var(--bg);color:var(--ink-muted);cursor:default}
+.field-error{font-size:12px;color:var(--red);margin-top:4px;display:none}
+.field-error.visible{display:block}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+.password-wrap{position:relative}
+.password-wrap input{padding-right:44px}
+.toggle-pwd{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;color:var(--ink-muted)}
+.toggle-pwd svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+
+.pwd-rules{font-size:12px;color:var(--ink-muted);margin-top:5px;line-height:1.5}
+
+.terms{display:flex;align-items:flex-start;gap:10px;margin-bottom:20px;font-size:13px;color:var(--ink-muted);line-height:1.5}
+.terms input[type=checkbox]{width:16px;height:16px;accent-color:var(--green-light);flex-shrink:0;margin-top:2px}
+.terms a{color:var(--green-light);font-weight:600}
+
+.btn-submit{width:100%;padding:14px;background:var(--green);color:white;border:none;border-radius:10px;font-size:15px;font-weight:700;font-family:var(--font);cursor:pointer;transition:background .15s;display:flex;align-items:center;justify-content:center;gap:10px}
+.btn-submit:hover{background:var(--green-mid)}
+.btn-submit:disabled{opacity:.5;cursor:not-allowed}
+.btn-submit .spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;display:none}
+.btn-submit.loading .btn-text{display:none}
+.btn-submit.loading .spinner{display:block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Success */
+.success{display:none;text-align:center;padding:20px 0}
+.success-icon{width:64px;height:64px;background:#e1f5ee;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px}
+.success-icon svg{width:28px;height:28px;stroke:var(--green-light);fill:none;stroke-width:2.5;stroke-linecap:round}
+.success h2{font-size:22px;font-weight:800;color:var(--ink);margin-bottom:10px}
+.success p{font-size:15px;color:var(--ink-muted);line-height:1.65;margin-bottom:28px}
+.btn-go{display:inline-block;padding:14px 36px;background:var(--green);color:white;font-size:15px;font-weight:700;border-radius:10px;text-decoration:none;transition:background .15s}
+.btn-go:hover{background:var(--green-mid)}
+
+@media(max-width:900px){
+  .left{display:none}
+  .right{padding:32px 24px}
+}
+</style>
+</head>
+<body>
+
+<!-- LEFT -->
+<div class="left">
+  <div>
+    <div class="logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24"><path d="M12 2C8.5 5 6 8.5 6 12a6 6 0 0012 0c0-1.5-.5-3-1.5-4.5C15 9 14 10.5 13 11c.5-3-1-6.5-1-9z"/></svg>
+      </div>
+      <div class="logo-name">FireApp</div>
+    </div>
+
+    <!-- Org card dinamica -->
+    <div class="org-card">
+      <div class="org-card-label">Sei stato invitato da</div>
+      <div class="org-name-loading" id="org-name-loading"></div>
+      <div class="org-name" id="org-name-left"></div>
+      <div class="org-meta" id="org-meta-left"></div>
+    </div>
+
+    <div class="left-headline">Entra nel team.<br><em>Inizia subito.</em></div>
+    <div class="left-desc">Crea il tuo account in 60 secondi. Il tuo profilo verrà collegato automaticamente all'organizzazione che ti ha invitato.</div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text"><strong>Compila il form</strong> con nome, email e password</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text"><strong>Accedi a FireApp</strong> — sei già nel team, nessun'altra configurazione</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text"><strong>Sul campo</strong> — installa l'app sul telefono e inizia a compilare verbali</div>
+      </div>
+    </div>
+  </div>
+  <div class="left-footer">© 2026 FireApp · Tutti i diritti riservati</div>
+</div>
+
+<!-- RIGHT -->
+<div class="right">
+  <div class="form-wrap">
+
+    <!-- Stato non valido (link mancante/scaduto) -->
+    <div class="invalid-state" id="invalid-state">
+      <div class="invalid-icon">🔗</div>
+      <div class="invalid-title">Link non valido</div>
+      <div class="invalid-sub">Questo link di invito non è valido o è scaduto.<br>Chiedi all'admin di generarne uno nuovo dal pannello Team.</div>
+    </div>
+
+    <!-- Form -->
+    <div id="form-view">
+      <div class="form-title">Crea il tuo account</div>
+      <div class="form-sub">Hai già un account? <a href="/index.html">Accedi</a></div>
+
+      <!-- Org badge nel form -->
+      <div class="org-badge" id="org-badge">
+        <div class="org-badge-icon">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        </div>
+        <div>
+          <div class="org-badge-loading" id="org-badge-loading" style="width:160px"></div>
+          <div class="org-badge-name" id="org-badge-name" style="display:none"></div>
+          <div class="org-badge-sub" id="org-badge-sub" style="display:none">Ti unisci come tecnico</div>
+        </div>
+      </div>
+
+      <div class="form-error" id="form-error"></div>
+
+      <form id="signup-form" novalidate>
+        <div class="form-row">
+          <div class="field">
+            <label>Nome *</label>
+            <input type="text" id="f-firstname" placeholder="Mario" autocomplete="given-name" required>
+            <div class="field-error" id="err-firstname">Campo obbligatorio</div>
+          </div>
+          <div class="field">
+            <label>Cognome *</label>
+            <input type="text" id="f-lastname" placeholder="Rossi" autocomplete="family-name" required>
+            <div class="field-error" id="err-lastname">Campo obbligatorio</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Email *</label>
+          <input type="email" id="f-email" placeholder="mario@tuaazienda.it" autocomplete="email" required>
+          <div class="field-error" id="err-email">Inserisci un'email valida</div>
+        </div>
+
+        <div class="field">
+          <label>Password *</label>
+          <div class="password-wrap">
+            <input type="password" id="f-password" placeholder="••••••••" autocomplete="new-password" required>
+            <button type="button" class="toggle-pwd" onclick="togglePwd()">
+              <svg id="pwd-eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <div class="pwd-rules">Minimo 8 caratteri, una maiuscola, un numero</div>
+          <div class="field-error" id="err-password">Password non valida (min. 8 caratteri, maiuscola, numero)</div>
+        </div>
+
+        <div class="terms">
+          <input type="checkbox" id="f-terms" required>
+          <label for="f-terms">
+            Ho letto e accetto i <a href="/termini.html" target="_blank">Termini di servizio</a>
+            e la <a href="https://www.iubenda.com/privacy-policy/XXXXXXXX" target="_blank">Privacy Policy</a>.
+          </label>
+        </div>
+
+        <button type="submit" class="btn-submit" id="btn-signup">
+          <span class="btn-text">Crea account e unisciti al team</span>
+          <div class="spinner"></div>
+        </button>
+      </form>
+    </div>
+
+    <!-- Successo -->
+    <div class="success" id="success-view">
+      <div class="success-icon">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h2>Benvenuto nel team! 🎉</h2>
+      <p>Il tuo account è stato creato e collegato a <strong id="success-org-name"></strong>.<br><br>Puoi accedere subito a FireApp.</p>
+      <a href="/index.html" class="btn-go">Entra in FireApp →</a>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL      = 'https://bclfpawguqpwypahmzbk.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjbGZwYXdndXFwd3lwYWhtemJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyOTI1NjQsImV4cCI6MjA5MTg2ODU2NH0.ONgZu-n7oWJaQJ7V6P3MOpBD9eUYA0YimGDHyi7DLcI';
+const { createClient } = window.supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── Leggi org_id dall'URL ─────────────────────────────────────────────────────
+const joinOrgId = new URLSearchParams(location.search).get('join') || '';
+let orgName = '';
+
+// ── Carica nome organizzazione ────────────────────────────────────────────────
+async function loadOrgInfo() {
+  if (!joinOrgId) {
+    // Nessun ?join= — link non valido
+    document.getElementById('invalid-state').style.display = 'block';
+    document.getElementById('form-view').style.display = 'none';
+    document.getElementById('org-badge').style.display = 'none';
+    return;
+  }
+
+  const { data, error } = await db.rpc('get_org_name_for_invite', { p_org_id: joinOrgId });
+
+  if (error || !data?.name) {
+    document.getElementById('invalid-state').style.display = 'block';
+    document.getElementById('form-view').style.display = 'none';
+    document.getElementById('org-badge').style.display = 'none';
+    return;
+  }
+
+  orgName = data.name;
+
+  // Aggiorna pannello sinistro
+  document.getElementById('org-name-loading').style.display = 'none';
+  const nameEl = document.getElementById('org-name-left');
+  nameEl.textContent = orgName;
+  nameEl.style.display = 'block';
+  const metaEl = document.getElementById('org-meta-left');
+  metaEl.textContent = data.city ? data.city : '';
+  if (data.city) metaEl.style.display = 'block';
+
+  // Aggiorna badge nel form
+  document.getElementById('org-badge-loading').style.display = 'none';
+  const badgeName = document.getElementById('org-badge-name');
+  badgeName.textContent = orgName;
+  badgeName.style.display = 'block';
+  document.getElementById('org-badge-sub').style.display = 'block';
+
+  // Aggiorna titolo pagina
+  document.title = 'Unisciti a ' + orgName + ' su FireApp';
+}
+
+// ── Toggle password ───────────────────────────────────────────────────────────
+function togglePwd() {
+  const input = document.getElementById('f-password');
+  input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+// ── Validazione ───────────────────────────────────────────────────────────────
+function showError(msg) {
+  const el = document.getElementById('form-error');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+function hideError() {
+  document.getElementById('form-error').classList.remove('visible');
+}
+
+function validate() {
+  let ok = true;
+  const fields = [
+    ['f-firstname', 'err-firstname', v => v.trim().length > 1],
+    ['f-lastname',  'err-lastname',  v => v.trim().length > 1],
+    ['f-email',     'err-email',     v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)],
+    ['f-password',  'err-password',  v => v.length >= 8 && /[A-Z]/.test(v) && /[0-9]/.test(v)],
+  ];
+  fields.forEach(([id, errId, fn]) => {
+    const input = document.getElementById(id);
+    const errEl = document.getElementById(errId);
+    const valid = fn(input.value);
+    input.classList.toggle('error', !valid);
+    errEl.classList.toggle('visible', !valid);
+    if (!valid) ok = false;
+  });
+  if (!document.getElementById('f-terms').checked) {
+    showError('Devi accettare i termini di servizio per continuare.');
+    ok = false;
+  }
+  return ok;
+}
+
+// ── Submit ────────────────────────────────────────────────────────────────────
+document.getElementById('signup-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  hideError();
+  if (!validate()) return;
+  if (!joinOrgId) { showError('Link di invito non valido.'); return; }
+
+  const btn      = document.getElementById('btn-signup');
+  const fullName = document.getElementById('f-firstname').value.trim() + ' ' + document.getElementById('f-lastname').value.trim();
+  const email    = document.getElementById('f-email').value.trim();
+  const password = document.getElementById('f-password').value;
+
+  btn.disabled = true;
+  btn.classList.add('loading');
+
+  try {
+    // 1. Crea utente Supabase Auth
+    const { data: authData, error: authError } = await db.auth.signUp({
+      email, password,
+      options: { data: { full_name: fullName } }
+    });
+
+    if (authError) {
+      if (authError.message.includes('already registered')) {
+        showError('Questa email è già registrata. Prova ad accedere da FireApp.');
+      } else {
+        showError('Errore durante la registrazione: ' + authError.message);
+      }
+      return;
+    }
+
+    // 2. Collegati all'organizzazione
+    const { data: joinData, error: joinError } = await db.rpc('join_organization', {
+      p_org_id:    joinOrgId,
+      p_user_id:   authData.user.id,
+      p_full_name: fullName,
+    });
+
+    if (joinError) {
+      showError('Account creato ma errore nel collegamento: ' + joinError.message);
+      return;
+    }
+
+    const result = typeof joinData === 'string' ? JSON.parse(joinData) : joinData;
+    if (!result.success) {
+      showError(result.error || 'Impossibile unirsi al team.');
+      return;
+    }
+
+    // 3. Successo
+    document.getElementById('success-org-name').textContent = orgName;
+    document.getElementById('form-view').style.display = 'none';
+    document.getElementById('success-view').style.display = 'block';
+
+  } catch (err) {
+    showError('Errore imprevisto. Riprova tra qualche istante.');
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+  }
+});
+
+// Avvia caricamento org
+loadOrgInfo();
+</script>
+</body>
+</html>

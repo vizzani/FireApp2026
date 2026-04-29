@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FireApp — Verbali antincendio conformi in 30 secondi</title>
+<meta name="description" content="L'app per manutentori antincendio che genera verbali conformi a UNI 9994-1, UNI 10779 e UNI 9795 in automatico. Niente più carta, niente più errori.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#073524;
+  --green-mid:#0d6040;
+  --green-light:#16a05e;
+  --green-bright:#22c97a;
+  --amber:#d97706;
+  --red:#dc2626;
+  --ink:#0a0f0d;
+  --ink-soft:#374151;
+  --ink-muted:#6b7280;
+  --border:#e5e7eb;
+  --bg:#f9fafb;
+  --white:#ffffff;
+  --font:'Plus Jakarta Sans',system-ui,sans-serif;
+  --radius:10px;
+  --radius-lg:16px;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);color:var(--ink);background:var(--white);-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+img{max-width:100%}
+
+/* ── LAYOUT ── */
+.container{max-width:1100px;margin:0 auto;padding:0 24px}
+.section{padding:96px 0}
+.section-sm{padding:64px 0}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.nav-inner{max-width:1100px;margin:0 auto;padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between}
+.nav-logo{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:800;color:var(--green);letter-spacing:-.3px}
+.nav-logo-mark{width:34px;height:34px;background:var(--green);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.nav-logo-mark svg{width:18px;height:18px;stroke:white;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav-links{display:flex;align-items:center;gap:32px}
+.nav-links a{font-size:14px;font-weight:600;color:var(--ink-soft);transition:color .15s}
+.nav-links a:hover{color:var(--green)}
+.nav-cta{background:var(--green);color:white;padding:10px 22px;border-radius:var(--radius);font-size:14px;font-weight:700;transition:background .15s}
+.nav-cta:hover{background:var(--green-mid)}
+
+/* ── HERO ── */
+.hero{padding:160px 0 100px;background:var(--green);position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 70% 50%,rgba(34,201,122,.12) 0%,transparent 70%)}
+.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.8);font-size:13px;font-weight:600;padding:6px 14px;border-radius:99px;margin-bottom:24px;letter-spacing:.03em}
+.hero-eyebrow span{width:6px;height:6px;border-radius:50%;background:var(--green-bright);display:inline-block}
+h1{font-size:clamp(36px,4.5vw,56px);font-weight:800;color:white;line-height:1.1;letter-spacing:-.5px;margin-bottom:24px}
+h1 em{color:var(--green-bright);font-style:normal}
+.hero-desc{font-size:18px;color:rgba(255,255,255,.7);line-height:1.65;margin-bottom:36px;max-width:480px}
+.hero-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.btn-hero{background:var(--green-bright);color:var(--green);padding:16px 32px;border-radius:var(--radius);font-size:16px;font-weight:800;transition:all .15s;display:inline-block}
+.btn-hero:hover{background:white;transform:translateY(-1px)}
+.btn-ghost{color:rgba(255,255,255,.7);font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px;transition:color .15s}
+.btn-ghost:hover{color:white}
+.btn-ghost svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.hero-trust{display:flex;align-items:center;gap:16px;margin-top:36px;padding-top:32px;border-top:1px solid rgba(255,255,255,.1)}
+.hero-trust-text{font-size:13px;color:rgba(255,255,255,.5);font-weight:500}
+.hero-trust-items{display:flex;gap:20px}
+.trust-item{display:flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,255,255,.65);font-weight:600}
+.trust-item svg{width:14px;height:14px;stroke:var(--green-bright);fill:none;stroke-width:2.5;stroke-linecap:round}
+
+/* Hero mockup */
+.hero-mockup{position:relative}
+.mockup-phone{background:#1a2820;border-radius:28px;padding:20px;border:1px solid rgba(255,255,255,.1);box-shadow:0 32px 80px rgba(0,0,0,.4)}
+.mockup-bar{background:#0a0f0d;border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.mockup-bar-title{font-size:13px;font-weight:700;color:white}
+.mockup-bar-badge{background:rgba(34,201,122,.2);color:var(--green-bright);font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px}
+.mockup-kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.m-kpi{background:rgba(255,255,255,.06);border-radius:8px;padding:10px 12px}
+.m-kpi-val{font-size:22px;font-weight:800;color:white;line-height:1}
+.m-kpi-val.ok{color:var(--green-bright)}
+.m-kpi-val.warn{color:#fbbf24}
+.m-kpi-label{font-size:10px;color:rgba(255,255,255,.45);margin-top:3px;font-weight:500}
+.mockup-card{background:rgba(255,255,255,.07);border-radius:10px;padding:12px;margin-bottom:8px}
+.m-card-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.m-card-title{font-size:12px;font-weight:700;color:white}
+.m-card-sub{font-size:10px;color:rgba(255,255,255,.45);margin-top:2px}
+.m-badge{font-size:9px;font-weight:700;padding:3px 7px;border-radius:4px;background:rgba(251,191,36,.15);color:#fbbf24}
+.m-badge-green{background:rgba(34,201,122,.15);color:var(--green-bright)}
+.m-tags{display:flex;gap:4px;flex-wrap:wrap}
+.m-tag{font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);font-weight:600}
+.m-progress{background:rgba(255,255,255,.1);border-radius:99px;height:4px;margin:8px 0 4px}
+.m-progress-fill{height:4px;border-radius:99px;background:var(--green-bright)}
+.m-progress-label{font-size:9px;color:rgba(255,255,255,.4)}
+.mockup-cl{background:rgba(255,255,255,.04);border-radius:8px;overflow:hidden}
+.m-cl-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.05)}
+.m-cl-item:last-child{border-bottom:none}
+.m-cl-dot{width:16px;height:16px;border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.m-cl-dot.ok-d{background:rgba(34,201,122,.25)}
+.m-cl-dot.ok-d::after{content:'';width:5px;height:8px;border:1.5px solid var(--green-bright);border-top:none;border-left:none;transform:rotate(45deg);display:block;margin-top:-2px}
+.m-cl-dot.pend{border:1.5px solid rgba(255,255,255,.2)}
+.m-cl-text{font-size:10px;color:rgba(255,255,255,.55);flex:1}
+
+/* ── LOGOS / NORME ── */
+.norme-bar{background:var(--bg);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:24px 0}
+.norme-inner{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
+.norme-label{font-size:12px;font-weight:600;color:var(--ink-muted);margin-right:8px;white-space:nowrap}
+.norm-pill{background:white;border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;color:var(--ink-soft)}
+
+/* ── PROBLEM ── */
+.problem-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:56px}
+.problem-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px}
+.problem-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:18px}
+.problem-icon svg{width:22px;height:22px;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;fill:none}
+.icon-red{background:#fef2f2}
+.icon-red svg{stroke:var(--red)}
+.icon-amber{background:#fffbeb}
+.icon-amber svg{stroke:var(--amber)}
+.icon-gray{background:#f3f4f6}
+.icon-gray svg{stroke:var(--ink-muted)}
+.problem-title{font-size:16px;font-weight:700;color:var(--ink);margin-bottom:8px}
+.problem-desc{font-size:14px;color:var(--ink-muted);line-height:1.6}
+
+/* ── SECTION HEADER ── */
+.section-label{font-size:13px;font-weight:700;color:var(--green-light);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px}
+h2{font-size:clamp(28px,3.5vw,42px);font-weight:800;color:var(--ink);line-height:1.15;letter-spacing:-.3px;margin-bottom:16px}
+.section-desc{font-size:18px;color:var(--ink-muted);line-height:1.65;max-width:560px}
+
+/* ── FEATURES ── */
+.features-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:56px}
+.feature-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;transition:border-color .2s,box-shadow .2s}
+.feature-card:hover{border-color:#a7f3d0;box-shadow:0 4px 24px rgba(22,160,94,.08)}
+.feature-card.featured{background:var(--green);border-color:var(--green)}
+.feature-icon{width:44px;height:44px;border-radius:10px;background:white;display:flex;align-items:center;justify-content:center;margin-bottom:18px}
+.feature-card.featured .feature-icon{background:rgba(255,255,255,.15)}
+.feature-icon svg{width:22px;height:22px;stroke:var(--green-light);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.feature-card.featured .feature-icon svg{stroke:var(--green-bright)}
+.feature-title{font-size:17px;font-weight:700;color:var(--ink);margin-bottom:8px}
+.feature-card.featured .feature-title{color:white}
+.feature-desc{font-size:14px;color:var(--ink-muted);line-height:1.6}
+.feature-card.featured .feature-desc{color:rgba(255,255,255,.65)}
+.feature-norms{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
+.norm-tag{font-size:11px;font-weight:600;padding:3px 8px;border-radius:4px;background:rgba(22,160,94,.1);color:var(--green-mid)}
+.feature-card.featured .norm-tag{background:rgba(255,255,255,.15);color:rgba(255,255,255,.8)}
+
+/* ── HOW IT WORKS ── */
+.how-bg{background:var(--bg)}
+.steps{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;margin-top:56px;position:relative}
+.steps::before{content:'';position:absolute;top:28px;left:10%;right:10%;height:1px;background:var(--border);z-index:0}
+.step-item{text-align:center;padding:0 16px;position:relative;z-index:1}
+.step-num{width:56px;height:56px;border-radius:50%;background:white;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:20px;font-weight:800;color:var(--green);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.step-title{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:8px}
+.step-desc{font-size:13px;color:var(--ink-muted);line-height:1.55}
+
+/* ── PRICING ── */
+.pricing-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:56px;align-items:start}
+.price-card{background:white;border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;position:relative}
+.price-card.popular{border:2px solid var(--green-light);box-shadow:0 8px 32px rgba(22,160,94,.15)}
+.popular-badge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--green-light);color:white;font-size:12px;font-weight:700;padding:4px 16px;border-radius:99px;white-space:nowrap}
+.price-plan{font-size:13px;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.price-val{font-size:40px;font-weight:800;color:var(--ink);line-height:1;margin-bottom:4px}
+.price-val sup{font-size:18px;vertical-align:top;margin-top:6px;display:inline-block}
+.price-period{font-size:14px;color:var(--ink-muted);margin-bottom:4px}
+.price-sub{font-size:12px;color:var(--ink-muted);margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+.price-features{list-style:none;display:flex;flex-direction:column;gap:10px;margin-bottom:28px}
+.price-features li{display:flex;align-items:flex-start;gap:10px;font-size:14px;color:var(--ink-soft)}
+.price-features li svg{width:16px;height:16px;stroke:var(--green-light);fill:none;stroke-width:2.5;stroke-linecap:round;flex-shrink:0;margin-top:2px}
+.price-features li.dimmed{color:var(--ink-muted)}
+.price-features li.dimmed svg{stroke:var(--border)}
+.btn-price{display:block;text-align:center;padding:13px;border-radius:var(--radius);font-size:15px;font-weight:700;border:1.5px solid var(--border);color:var(--ink);transition:all .15s}
+.btn-price:hover{border-color:var(--green-light);color:var(--green)}
+.btn-price-primary{background:var(--green);color:white;border-color:var(--green)}
+.btn-price-primary:hover{background:var(--green-mid);color:white}
+
+/* ── TESTIMONIALS ── */
+.testi-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:48px}
+.testi-card{background:white;border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px}
+.testi-stars{display:flex;gap:3px;margin-bottom:14px}
+.testi-stars span{font-size:14px;color:#fbbf24}
+.testi-text{font-size:15px;color:var(--ink-soft);line-height:1.65;margin-bottom:18px;font-style:italic}
+.testi-author{display:flex;align-items:center;gap:10px}
+.testi-avatar{width:36px;height:36px;border-radius:50%;background:var(--green);color:white;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.testi-name{font-size:14px;font-weight:700;color:var(--ink)}
+.testi-role{font-size:12px;color:var(--ink-muted)}
+
+/* ── CTA FINALE ── */
+.cta-section{background:var(--green);padding:96px 0;text-align:center}
+.cta-section h2{color:white;margin-bottom:16px}
+.cta-section p{color:rgba(255,255,255,.65);font-size:18px;margin-bottom:40px;max-width:480px;margin-left:auto;margin-right:auto}
+.cta-actions{display:flex;justify-content:center;align-items:center;gap:16px;flex-wrap:wrap}
+.btn-cta-white{background:white;color:var(--green);padding:16px 36px;border-radius:var(--radius);font-size:16px;font-weight:800;transition:all .15s}
+.btn-cta-white:hover{background:var(--green-bright);transform:translateY(-1px)}
+.cta-note{font-size:13px;color:rgba(255,255,255,.45);margin-top:20px}
+
+/* ── FOOTER ── */
+footer{background:var(--ink);padding:48px 0 32px}
+.footer-inner{display:grid;grid-template-columns:2fr 1fr 1fr;gap:48px;margin-bottom:40px}
+.footer-brand{font-size:20px;font-weight:800;color:white;margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.footer-desc{font-size:14px;color:rgba(255,255,255,.4);line-height:1.6;max-width:280px}
+.footer-col-title{font-size:12px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px}
+.footer-links{display:flex;flex-direction:column;gap:8px}
+.footer-links a{font-size:14px;color:rgba(255,255,255,.55);transition:color .15s}
+.footer-links a:hover{color:white}
+.footer-bottom{border-top:1px solid rgba(255,255,255,.08);padding-top:28px;display:flex;justify-content:space-between;align-items:center}
+.footer-copy{font-size:13px;color:rgba(255,255,255,.3)}
+.footer-norms{font-size:12px;color:rgba(255,255,255,.2)}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  .hero-grid,.features-grid,.steps,.pricing-grid,.testi-grid,.footer-inner{grid-template-columns:1fr}
+  .problem-grid{grid-template-columns:1fr 1fr}
+  .steps::before{display:none}
+  .nav-links{display:none}
+  .section{padding:64px 0}
+  h2{font-size:28px}
+  h1{font-size:36px}
+}
+@media(max-width:580px){
+  .problem-grid,.hero-trust-items{grid-template-columns:1fr;flex-direction:column}
+  .pricing-grid{grid-template-columns:1fr}
+  .hero-trust{flex-direction:column;align-items:flex-start;gap:12px}
+}
+</style>
+
+<!-- Iubenda — sostituisci gli ID dopo aver creato la policy su iubenda.com -->
+<script type="text/javascript">
+  var _iub = _iub || [];
+  _iub.csConfiguration = {
+    "lang": "it",
+    "siteId": 0000000,
+    "cookiePolicyId": 0000000,
+    "banner": { "acceptButtonDisplay": true, "closeButtonRejects": true, "position": "bottom" }
+  };
+</script>
+<script type="text/javascript" src="//cdn.iubenda.com/cs/iubenda_cs.js" charset="UTF-8" async></script>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <div class="nav-logo-mark">
+        <svg viewBox="0 0 24 24"><path d="M12 2C8.5 5 6 8.5 6 12a6 6 0 0012 0c0-1.5-.5-3-1.5-4.5C15 9 14 10.5 13 11c.5-3-1-6.5-1-9z"/></svg>
+      </div>
+      FireApp
+    </div>
+    <div class="nav-links">
+      <a href="#features">Funzionalità</a>
+      <a href="#come-funziona">Come funziona</a>
+      <a href="#prezzi">Prezzi</a>
+    </div>
+    <a href="signup.html" class="nav-cta">Prova gratis 30 giorni</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="container">
+    <div class="hero-grid">
+      <div>
+        <div class="hero-eyebrow"><span></span>Per manutentori antincendio professionali</div>
+        <h1>Verbali conformi.<br><em>In 30 secondi.</em></h1>
+        <p class="hero-desc">Smetti di compilare carte a mano. FireApp genera verbali di manutenzione conformi a UNI 9994-1, UNI 10779 e UNI 9795 direttamente dal cantiere, anche offline.</p>
+        <div class="hero-actions">
+          <a href="signup.html" class="btn-hero">Inizia gratis — 30 giorni</a>
+          <a href="/tour.html" class="btn-ghost">
+            Scopri come funziona →
+          </a>
+        </div>
+        <div class="hero-trust">
+          <div class="hero-trust-text">Conforme a</div>
+          <div class="hero-trust-items">
+            <div class="trust-item"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>D.M. 37/2008</div>
+            <div class="trust-item"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>D.Lgs 81/2008</div>
+            <div class="trust-item"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>UNI EN 54</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-mockup">
+        <div class="mockup-phone">
+          <div class="mockup-bar">
+            <div>
+              <div class="mockup-bar-title">Supermercato Rossi</div>
+              <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:2px">16/04/2026 · Semestrale</div>
+            </div>
+            <div class="mockup-bar-badge">In corso</div>
+          </div>
+          <div class="mockup-kpis">
+            <div class="m-kpi"><div class="m-kpi-val ok">3</div><div class="m-kpi-label">Oggi</div></div>
+            <div class="m-kpi"><div class="m-kpi-val warn">7</div><div class="m-kpi-label">Scadenze</div></div>
+          </div>
+          <div class="mockup-card">
+            <div class="m-card-head">
+              <div>
+                <div class="m-card-title">Checklist Estintori</div>
+                <div class="m-card-sub">UNI 9994-1 · 6 controlli</div>
+              </div>
+              <div class="m-badge m-badge-green">4/6</div>
+            </div>
+            <div class="mockup-cl">
+              <div class="m-cl-item"><div class="m-cl-dot ok-d"></div><div class="m-cl-text">Verifica accessibilità e segnaletica</div></div>
+              <div class="m-cl-item"><div class="m-cl-dot ok-d"></div><div class="m-cl-text">Integrità corpo e manometro</div></div>
+              <div class="m-cl-item"><div class="m-cl-dot ok-d"></div><div class="m-cl-text">Verifica carica</div></div>
+              <div class="m-cl-item"><div class="m-cl-dot ok-d"></div><div class="m-cl-text">Controllo valvola e leva</div></div>
+              <div class="m-cl-item"><div class="m-cl-dot pend"></div><div class="m-cl-text" style="color:rgba(255,255,255,.3)">Verifica sigillo di sicurezza</div></div>
+            </div>
+            <div class="m-progress" style="margin-top:10px"><div class="m-progress-fill" style="width:66%"></div></div>
+            <div class="m-progress-label">Completato 4/6 · PDF pronto al termine</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="norme-bar">
+  <div class="norme-inner">
+    <div class="norme-label">Checklist integrate per:</div>
+    <div class="norm-pill">UNI 9994-1</div>
+    <div class="norm-pill">UNI 10779</div>
+    <div class="norm-pill">UNI 9795</div>
+    <div class="norm-pill">UNI EN 54-16</div>
+    <div class="norm-pill">UNI ISO 7240-19</div>
+    <div class="norm-pill">UNI 11473</div>
+    <div class="norm-pill">D.Lgs 81/2008</div>
+    <div class="norm-pill">D.M. 37/2008</div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container">
+    <div class="section-label">Il problema</div>
+    <h2>La documentazione antincendio<br>è ancora un problema aperto</h2>
+    <p class="section-desc">La maggior parte delle aziende di manutenzione lavora ancora con carta, Excel o PDF compilati a mano. Questo costa tempo e crea rischi reali.</p>
+    <div class="problem-grid">
+      <div class="problem-card">
+        <div class="problem-icon icon-red">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div class="problem-title">Verbali non conformi</div>
+        <div class="problem-desc">Un verbale compilato a mano può contenere errori, voci mancanti o riferimenti normativi errati. In caso di ispezione VVF, è un problema serio.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-icon icon-amber">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="problem-title">Ore perse in burocrazia</div>
+        <div class="problem-desc">Compilare un verbale a mano richiede 20-30 minuti per intervento. Con 10 interventi a settimana, sono 4 ore buttate via ogni settimana.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-icon icon-gray">
+          <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+        </div>
+        <div class="problem-title">Scadenze perse</div>
+        <div class="problem-desc">Tenere traccia delle scadenze per decine di clienti con fogli Excel o agende cartacee porta inevitabilmente a interventi ritardati e clienti insoddisfatti.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="features" style="background:var(--bg)">
+  <div class="container">
+    <div class="section-label">Funzionalità</div>
+    <h2>Tutto quello che serve,<br>niente di superfluo</h2>
+    <p class="section-desc">Ogni funzione è progettata per il lavoro reale di un manutentore antincendio sul campo.</p>
+    <div class="features-grid">
+      <div class="feature-card featured">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 12 18 15 15"/></svg>
+        </div>
+        <div class="feature-title">Verbali PDF automatici</div>
+        <div class="feature-desc">Al termine di ogni intervento, il verbale è già pronto: intestazione, checklist compilata, anomalie, firma cliente e numero progressivo. Conforme per legge.</div>
+        <div class="feature-norms">
+          <span class="norm-tag">D.M. 37/2008</span>
+          <span class="norm-tag">Firma digitale</span>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        </div>
+        <div class="feature-title">Checklist normative integrate</div>
+        <div class="feature-desc">Ogni punto di controllo ha già il riferimento normativo corretto. Estintori, idranti, IRAI, EVAC, porte REI: nessun rischio di dimenticare una voce.</div>
+        <div class="feature-norms">
+          <span class="norm-tag">UNI 9994-1</span>
+          <span class="norm-tag">UNI 10779</span>
+          <span class="norm-tag">UNI 9795</span>
+          <span class="norm-tag">UNI EN 54-16</span>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <div class="feature-title">Scadenzario automatico</div>
+        <div class="feature-desc">Dopo ogni intervento, FireApp calcola automaticamente le prossime scadenze per ogni impianto. Semestrale, annuale, triennale: non dimentichi più nulla.</div>
+        <div class="feature-norms">
+          <span class="norm-tag">Alert preventivi</span>
+          <span class="norm-tag">Multi-cliente</span>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        </div>
+        <div class="feature-title">Multi-tecnico</div>
+        <div class="feature-desc">Aggiungi tutti i tuoi tecnici. Ognuno vede solo i propri interventi, ma il titolare ha la dashboard completa con lo stato di tutti i clienti.</div>
+        <div class="feature-norms">
+          <span class="norm-tag">Ruoli admin/tecnico</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section how-bg" id="come-funziona">
+  <div class="container">
+    <div class="section-label">Come funziona</div>
+    <h2>Dall'intervento al verbale<br>in quattro passi</h2>
+    <div class="steps">
+      <div class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-title">Apri il cliente</div>
+        <div class="step-desc">Cerca il cliente e crea un nuovo intervento. L'app carica automaticamente gli impianti installati.</div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-title">Compila la checklist</div>
+        <div class="step-desc">Tocca OK, Anomalia o N/A per ogni voce. I riferimenti normativi sono già scritti, tu pensi al controllo.</div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-title">Firma sul posto</div>
+        <div class="step-desc">Il cliente firma direttamente sullo schermo del telefono. La firma viene incorporata nel PDF.</div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">4</div>
+        <div class="step-title">PDF inviato</div>
+        <div class="step-desc">Il verbale viene inviato via email al cliente e archiviato. Le scadenze future sono già calcolate.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="prezzi">
+  <div class="container">
+    <div style="text-align:center">
+      <div class="section-label" style="display:inline-block">Prezzi</div>
+      <h2>Semplice e trasparente</h2>
+      <p class="section-desc" style="margin:0 auto">30 giorni di prova gratuita, nessuna carta di credito richiesta. Disdici quando vuoi.</p>
+    </div>
+    <div class="pricing-grid">
+
+      <div class="price-card">
+        <div class="price-plan">Starter</div>
+        <div class="price-val"><sup>€</sup>29</div>
+        <div class="price-period">al mese + IVA</div>
+        <div class="price-sub">Per freelance e piccole imprese</div>
+        <ul class="price-features">
+          <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Fino a 2 tecnici</li>
+          <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Fino a 50 clienti</li>
+          <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Checklist illimitate</li>
+          <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Verbali PDF</li>
+          <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Scadenzario automatico</li>
+          <li class="dimmed"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Logo aziendale sul PDF</li>
+          <li class="dimmed"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Multi-sede</li>
+        </ul>
+        <a href="signup.html" class="btn-price">Prova gratis 30 giorni</a>
+      </div>
+
+      <div class="price-card popular">
+        <div class="popular-badge">Più scelto</div>
+        <div class="price-plan">Pro</div>
+        <div class="price-val"><sup>€</sup>59</div>
+        <div class="price-period">al mese + IVA</div>
+        <div class="price-sub">Per aziende in crescita</div>
+        <ul class="price-features">
+          <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Tecnici illimitati</li>
+          <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Clienti illimitati</li>
+          <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Checklist illimitate</li>
+          <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Verbali PDF con logo</li>
+          <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Scadenzario automatico</li>
+          <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Logo aziendale sul PDF</li>
+          <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Supporto prioritario</li>
+        </ul>
+        <a href="signup.html" class="btn-price btn-price-primary">Prova gratis 30 giorni</a>
+      </div>
+
+      <div class="price-card">
+        <div class="price-plan">Agenzia</div>
+        <div class="price-val"><sup>€</sup>120</div>
+        <div class="price-period">al mese + IVA</div>
+        <div class="price-sub">Per strutture con più sedi</div>
+        <ul class="price-features">
+          <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Tutto del piano Pro</li>
+          <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Rendicontazione multi-sede</li>
+          <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Dashboard direzionale</li>
+          <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Export dati CSV/Excel</li>
+          <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Onboarding dedicato</li>
+          <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Supporto telefonico</li>
+          <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Personalizzazioni</li>
+        </ul>
+        <a href="mailto:info@fireapp.it" class="btn-price">Contattaci</a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section class="section-sm" style="background:var(--bg)">
+  <div class="container">
+    <div class="section-label">Chi la usa</div>
+    <h2>Lo dicono i manutentori</h2>
+    <div class="testi-grid">
+      <div class="testi-card">
+        <div class="testi-stars"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
+        <p class="testi-text">"Prima ci mettevo mezz'ora a compilare un verbale. Adesso premo un tasto e il PDF è già pronto mentre sto ancora dal cliente. Non tornerei mai indietro."</p>
+        <div class="testi-author">
+          <div class="testi-avatar">MR</div>
+          <div><div class="testi-name">Marco R.</div><div class="testi-role">Tecnico antincendio, Abruzzo</div></div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-stars"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
+        <p class="testi-text">"Avevo perso un cliente perché avevo saltato una scadenza senza accorgermene. Con lo scadenzario automatico non mi è più capitato. Vale già solo per questo."</p>
+        <div class="testi-author">
+          <div class="testi-avatar">GL</div>
+          <div><div class="testi-name">Giorgio L.</div><div class="testi-role">Titolare, Sicurezza Antincendio Srl</div></div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-stars"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
+        <p class="testi-text">"I miei tecnici erano scettici all'inizio. Dopo una settimana nessuno voleva più tornare ai fogli di carta. La semplicità fa la differenza sul campo."</p>
+        <div class="testi-author">
+          <div class="testi-avatar">AS</div>
+          <div><div class="testi-name">Anna S.</div><div class="testi-role">Responsabile operativa, Lazio</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-section">
+  <div class="container">
+    <h2>Pronto a eliminare la carta?</h2>
+    <p>Inizia gratis oggi. 30 giorni senza limiti, nessuna carta di credito richiesta.</p>
+    <div class="cta-actions">
+      <a href="signup.html" class="btn-cta-white">Inizia gratis — 30 giorni</a>
+    </div>
+    <div class="cta-note">Nessun vincolo · Disdici quando vuoi · Supporto via email incluso</div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div>
+        <div class="footer-brand">
+          <div class="nav-logo-mark">
+            <svg viewBox="0 0 24 24"><path d="M12 2C8.5 5 6 8.5 6 12a6 6 0 0012 0c0-1.5-.5-3-1.5-4.5C15 9 14 10.5 13 11c.5-3-1-6.5-1-9z" stroke="white" fill="none" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </div>
+          FireApp
+        </div>
+        <p class="footer-desc">Il software per la gestione della manutenzione antincendio. Verbali conformi, scadenzario automatico, firma digitale.</p>
+      </div>
+      <div>
+        <div class="footer-col-title">Prodotto</div>
+        <div class="footer-links">
+          <a href="#features">Funzionalità</a>
+          <a href="#prezzi">Prezzi</a>
+          <a href="#come-funziona">Come funziona</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Normative</div>
+        <div class="footer-links">
+          <a href="#">UNI 9994-1 Estintori</a>
+          <a href="#">UNI 10779 Idranti</a>
+          <a href="#">UNI 9795 IRAI</a>
+          <a href="#">UNI EN 54-16 EVAC</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-copy">© 2026 FireApp · Sviluppato da <strong style="color:rgba(255,255,255,.45)">Matteo Vizzani</strong> · RemaTarlazzi SpA · <a href="https://www.iubenda.com/privacy-policy/XXXXXXXX" target="_blank" class="iubenda-nostyle" style="color:rgba(255,255,255,.3);text-decoration:none">Privacy Policy</a> · <a href="/termini.html" style="color:rgba(255,255,255,.3);text-decoration:none">Termini</a> · <a href="/dpa.html" style="color:rgba(255,255,255,.3);text-decoration:none">DPA</a></div>
+      <div class="footer-norms">Conforme a D.M. 37/2008 · D.Lgs 81/2008 · UNI EN 54</div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

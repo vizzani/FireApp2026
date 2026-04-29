@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#073524">
+<title>FireApp — Scheda Impianto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#073524;--green-mid:#0d6040;--green-light:#16a05e;--green-bright:#22c97a;
+  --amber:#d97706;--red:#dc2626;--ink:#111827;--ink-soft:#374151;--ink-muted:#6b7280;
+  --border:#e5e7eb;--bg:#f9fafb;--white:#fff;
+  --font:'Plus Jakarta Sans',system-ui,sans-serif;
+  --radius:10px;--radius-lg:16px;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;min-height:100vh}
+
+/* HEADER */
+.header{background:var(--green);padding:20px 20px 28px;position:relative;overflow:hidden}
+.header::after{content:'';position:absolute;bottom:-20px;left:0;right:0;height:40px;background:var(--bg);border-radius:50% 50% 0 0/100% 100% 0 0}
+.header-logo{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+.header-logo-mark{width:28px;height:28px;background:rgba(255,255,255,.15);border-radius:6px;display:flex;align-items:center;justify-content:center}
+.header-logo-mark svg{width:14px;height:14px;stroke:white;fill:none;stroke-width:2;stroke-linecap:round}
+.header-logo-name{font-size:15px;font-weight:800;color:white;letter-spacing:-.2px}
+.header-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.85);font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px;margin-bottom:10px}
+.header-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--green-bright)}
+.header-title{font-size:22px;font-weight:800;color:white;line-height:1.2;margin-bottom:4px}
+.header-sub{font-size:13px;color:rgba(255,255,255,.6)}
+
+/* CONTENT */
+.content{padding:24px 20px;max-width:480px;margin:0 auto}
+
+/* STATO BADGE */
+.stato-wrap{display:flex;align-items:center;justify-content:space-between;background:white;border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.stato-label{font-size:12px;font-weight:600;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.stato-value{font-size:20px;font-weight:800;color:var(--ink)}
+.stato-badge{font-size:12px;font-weight:700;padding:6px 14px;border-radius:99px}
+.badge-conforme{background:#e1f5ee;color:#065f46}
+.badge-anomalie{background:#fffbeb;color:#92400e}
+.badge-non-conforme{background:#fee2e2;color:#991b1b}
+.badge-no-data{background:#f3f4f6;color:var(--ink-muted)}
+
+/* CARDS */
+.card{background:white;border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.card-title{font-size:13px;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card-title svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.info-row{display:flex;justify-content:space-between;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--border);gap:12px}
+.info-row:last-child{border-bottom:none;padding-bottom:0}
+.info-key{font-size:13px;color:var(--ink-muted);flex-shrink:0}
+.info-val{font-size:13px;font-weight:600;color:var(--ink);text-align:right}
+
+/* CHECKLIST MINI */
+.cl-mini{margin-top:6px}
+.cl-mini-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px}
+.cl-mini-item:last-child{border-bottom:none}
+.cl-dot{width:18px;height:18px;border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;font-weight:800;margin-top:1px}
+.cl-dot-ok{background:#e1f5ee;color:#065f46}
+.cl-dot-an{background:#fee2e2;color:#991b1b}
+.cl-dot-na{background:#f3f4f6;color:var(--ink-muted)}
+.cl-dot-nd{background:#f3f4f6;color:#d1d5db}
+.cl-text{flex:1;color:var(--ink-soft);line-height:1.4}
+.cl-norm{font-size:10px;color:var(--ink-muted);margin-top:1px}
+
+/* SCADENZA */
+.scad-card{border-left:3px solid}
+.scad-ok{border-color:var(--green-light)}
+.scad-warn{border-color:var(--amber)}
+.scad-over{border-color:var(--red)}
+.scad-days{font-size:28px;font-weight:800;line-height:1}
+.scad-ok .scad-days{color:var(--green-light)}
+.scad-warn .scad-days{color:var(--amber)}
+.scad-over .scad-days{color:var(--red)}
+
+/* ANOMALIE */
+.anom-item{background:#fff5f5;border:1px solid #fecaca;border-radius:var(--radius);padding:12px;margin-bottom:8px}
+.anom-item:last-child{margin-bottom:0}
+.anom-sev{font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.anom-desc{font-size:13px;color:var(--ink-soft);line-height:1.45}
+
+/* LOADING / ERROR */
+.loading-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:16px}
+.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--green-light);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error-wrap{text-align:center;padding:40px 24px}
+.error-icon{font-size:48px;margin-bottom:16px}
+.error-title{font-size:18px;font-weight:700;margin-bottom:8px}
+.error-sub{font-size:14px;color:var(--ink-muted);line-height:1.55}
+
+/* FOOTER */
+.footer{text-align:center;padding:24px 20px;font-size:12px;color:var(--ink-muted)}
+.footer a{color:var(--green-light);text-decoration:none;font-weight:600}
+
+/* P6 alert */
+.p6-alert{background:#fff0f0;border:1px solid #fca5a5;border-radius:var(--radius);padding:12px 14px;margin-bottom:12px;display:flex;gap:10px;align-items:flex-start}
+.p6-alert svg{width:18px;height:18px;stroke:#dc2626;fill:none;stroke-width:2;stroke-linecap:round;flex-shrink:0;margin-top:1px}
+.p6-alert-text{font-size:13px;color:#7f1d1d;line-height:1.45}
+
+@media(min-width:480px){
+  .content{padding:28px 24px}
+}
+</style>
+</head>
+<body>
+
+<div id="root">
+  <div class="loading-wrap">
+    <div class="spinner"></div>
+    <div style="font-size:14px;color:var(--ink-muted)">Caricamento scheda impianto…</div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL      = 'https://bclfpawguqpwypahmzbk.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjbGZwYXdndXFwd3lwYWhtemJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyOTI1NjQsImV4cCI6MjA5MTg2ODU2NH0.ONgZu-n7oWJaQJ7V6P3MOpBD9eUYA0YimGDHyi7DLcI';
+
+const { createClient } = window.supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const EQ_LABELS = {
+  estintori:'Estintori', idranti:'Idranti', irai:'IRAI',
+  evac:'EVAC', sprinkler:'Sprinkler', porte_rei:'Porte REI'
+};
+const IRAI_ITEMS = [
+  { id:'irai_01', desc:'Verifica centrale: display, segnalazioni, log eventi', norm:'UNI 9795 - p.12.1' },
+  { id:'irai_02', desc:'Test rivelatori automatici zona per zona', norm:'UNI 9795 - p.12.2' },
+  { id:'irai_03', desc:'Test pulsanti di allarme manuale (PAM)', norm:'UNI 9795 - p.12.3' },
+  { id:'irai_04', desc:'Verifica segnalatori ottici e acustici', norm:'UNI 9795 - p.12.4' },
+  { id:'irai_05', desc:'Controllo alimentazione e batterie di riserva', norm:'UNI 9795 - p.12.5' },
+  { id:'irai_06', desc:'Verifica isolatori di linea e cablaggio', norm:'UNI 9795 - p.12.6' },
+  { id:'irai_07', desc:'Controllo interfacce EVAC / sprinkler / REI', norm:'UNI 9795 - p.12.7' },
+  { id:'irai_08', desc:'Verifica libro log: falsi allarmi e guasti', norm:'UNI 9795 - p.12.8' },
+];
+
+function fmt(d) {
+  if (!d) return '—';
+  return new Date(d + 'T12:00:00').toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+
+function daysBetween(a, b) {
+  return Math.round((new Date(b) - new Date(a)) / 86400000);
+}
+
+function isOlderThan(dateStr, years) {
+  if (!dateStr) return false;
+  const limit = new Date();
+  limit.setFullYear(limit.getFullYear() - years);
+  return new Date(dateStr + 'T12:00:00') < limit;
+}
+
+async function load() {
+  const params = new URLSearchParams(location.search);
+  const equipId = params.get('id');
+
+  if (!equipId) { renderError('Link non valido', 'L\'URL non contiene un ID impianto valido.'); return; }
+
+  // Chiama la RPC pubblica che bypassa RLS
+  const { data, error } = await db.rpc('get_public_equipment_status', { p_equipment_id: equipId });
+
+  if (error || !data) {
+    renderError('Impianto non trovato', 'Questo codice QR non corrisponde a nessun impianto registrato in FireApp.');
+    return;
+  }
+
+  render(data);
+}
+
+function render(d) {
+  const eq       = d.equipment;
+  const client   = d.client;
+  const org      = d.organization;
+  const lastInterv = d.last_intervention;
+  const responses  = d.checklist_responses || [];
+  const anomalies  = d.open_anomalies || [];
+  const nextSched  = d.next_schedule;
+  const today = new Date().toISOString().split('T')[0];
+
+  // Stato badge
+  let statoClass = 'badge-no-data', statoText = 'Nessun intervento';
+  if (lastInterv) {
+    if (lastInterv.outcome === 'conforme')      { statoClass = 'badge-conforme';     statoText = 'Conforme'; }
+    else if (lastInterv.outcome === 'anomalie') { statoClass = 'badge-anomalie';     statoText = 'Con anomalie'; }
+    else if (lastInterv.outcome === 'non_conforme') { statoClass = 'badge-non-conforme'; statoText = 'Non conforme'; }
+  }
+
+  // Scadenza
+  let scadHtml = '';
+  if (nextSched) {
+    const days = daysBetween(today, nextSched.next_date);
+    const isOver = days < 0;
+    const cls = isOver ? 'scad-over' : days <= 30 ? 'scad-warn' : 'scad-ok';
+    const daysLabel = isOver
+      ? Math.abs(days) + ' giorni fa'
+      : days === 0 ? 'Oggi'
+      : 'tra ' + days + ' giorni';
+    const typeLabel = { semestrale:'Semestrale', annuale:'Annuale', mensile:'Mensile', triennale:'Triennale', decennale:'Decennale' }[nextSched.maintenance_type] || nextSched.maintenance_type;
+    scadHtml = `
+      <div class="card scad-card ${cls}">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Prossima manutenzione
+        </div>
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px">
+          <div class="scad-days">${daysLabel}</div>
+        </div>
+        <div style="font-size:13px;color:var(--ink-muted)">${typeLabel} · ${fmt(nextSched.next_date)}</div>
+      </div>`;
+  }
+
+  // Anomalie aperte
+  const sevLabel = { critical:'Critica', high:'Alta', medium:'Media', low:'Bassa' };
+  const anomHtml = anomalies.length
+    ? `<div class="card">
+        <div class="card-title" style="color:var(--red)">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Anomalie aperte (${anomalies.length})
+        </div>
+        ${anomalies.map(a => `
+          <div class="anom-item">
+            <div class="anom-sev">Gravita: ${sevLabel[a.severity] || a.severity}</div>
+            <div class="anom-desc">${a.description}</div>
+          </div>`).join('')}
+      </div>`
+    : '';
+
+  // Checklist IRAI dell'ultimo intervento
+  const respMap = {};
+  responses.forEach(r => { respMap[r.item_id] = r.status; });
+  const dotCls  = { ok:'cl-dot-ok', anomaly:'cl-dot-an', na:'cl-dot-na' };
+  const dotTxt  = { ok:'OK', anomaly:'AN', na:'N/A' };
+  const clHtml = lastInterv ? `
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        Checklist UNI 9795 — ${fmt(lastInterv.date)}
+      </div>
+      <div class="cl-mini">
+        ${IRAI_ITEMS.map(item => {
+          const s = respMap[item.id];
+          const dc = dotCls[s] || 'cl-dot-nd';
+          const dt = dotTxt[s] || '—';
+          return `<div class="cl-mini-item">
+            <div class="cl-dot ${dc}">${dt}</div>
+            <div class="cl-text">${item.desc}<div class="cl-norm">${item.norm}</div></div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
+  // P6 alert
+  const p6Html = isOlderThan(eq.installation_date, 12)
+    ? `<div class="p6-alert">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <div class="p6-alert-text"><strong>Attenzione — Revisione P6</strong><br>
+        Impianto installato il ${fmt(eq.installation_date)}. Superati 12 anni dall'installazione: necessaria verifica straordinaria.</div>
+      </div>` : '';
+
+  document.getElementById('root').innerHTML = `
+    <div class="header">
+      <div class="header-logo">
+        <div class="header-logo-mark">
+          <svg viewBox="0 0 24 24"><path d="M12 2C8.5 5 6 8.5 6 12a6 6 0 0012 0c0-1.5-.5-3-1.5-4.5C15 9 14 10.5 13 11c.5-3-1-6.5-1-9z"/></svg>
+        </div>
+        <div class="header-logo-name">FireApp</div>
+      </div>
+      <div class="header-badge"><span class="dot"></span>Scheda impianto IRAI</div>
+      <div class="header-title">${eq.brand ? eq.brand + (eq.model ? ' ' + eq.model : '') : 'Impianto IRAI'}</div>
+      <div class="header-sub">${[client.name, client.address, client.city].filter(Boolean).join(' · ')}</div>
+    </div>
+
+    <div class="content">
+      <!-- Stato attuale -->
+      <div class="stato-wrap">
+        <div>
+          <div class="stato-label">Stato</div>
+          <div class="stato-value">${lastInterv ? fmt(lastInterv.date) : '—'}</div>
+          ${lastInterv ? `<div style="font-size:12px;color:var(--ink-muted);margin-top:2px">Tecnico: ${lastInterv.technician_name || '—'}</div>` : ''}
+        </div>
+        <span class="stato-badge ${statoClass}">${statoText}</span>
+      </div>
+
+      ${p6Html}
+      ${scadHtml}
+      ${anomHtml}
+
+      <!-- Info impianto -->
+      <div class="card">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Dati impianto
+        </div>
+        ${infoRow('Tipo', EQ_LABELS[eq.type] || eq.type)}
+        ${infoRow('Quantita', eq.quantity || '1')}
+        ${eq.brand ? infoRow('Marca / Modello', [eq.brand, eq.model].filter(Boolean).join(' ')) : ''}
+        ${eq.location ? infoRow('Posizione', eq.location) : ''}
+        ${eq.installation_date ? infoRow('Data installazione', fmt(eq.installation_date)) : ''}
+        ${eq.notes ? infoRow('Note', eq.notes) : ''}
+      </div>
+
+      <!-- Ubicazione -->
+      <div class="card">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          Ubicazione
+        </div>
+        ${infoRow('Cliente', client.name || '—')}
+        ${client.address ? infoRow('Indirizzo', [client.address, client.city].filter(Boolean).join(', ')) : ''}
+        ${infoRow('Manutentore', org.name || '—')}
+      </div>
+
+      ${clHtml}
+
+      <div class="footer">
+        <strong>${org.name || ''}</strong><br>
+        ${org.vat_number ? '<span>P.IVA ' + org.vat_number + '</span>' : ''}
+        ${org.address ? ' · <span>' + [org.address, org.city].filter(Boolean).join(', ') + '</span>' : ''}
+        ${org.phone ? ' · <span>' + org.phone + '</span>' : ''}
+        ${org.email ? ' · <a href="mailto:' + org.email + '">' + org.email + '</a>' : ''}
+        <br><span style="color:var(--ink-muted)">Gestito con <a href="https://fireapp-five.vercel.app" target="_blank">FireApp</a></span>
+      </div>
+    </div>`;
+}
+
+function infoRow(k, v) {
+  return `<div class="info-row"><span class="info-key">${k}</span><span class="info-val">${v}</span></div>`;
+}
+
+function renderError(title, sub) {
+  document.getElementById('root').innerHTML = `
+    <div class="content" style="padding-top:60px">
+      <div class="error-wrap">
+        <div class="error-icon">🔍</div>
+        <div class="error-title">${title}</div>
+        <div class="error-sub">${sub}</div>
+      </div>
+    </div>`;
+}
+
+load();
+</script>
+</body>
+</html>

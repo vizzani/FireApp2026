@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#073524">
+  <meta name="description" content="Gestione interventi e checklist normative per manutentori antincendio">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FireApp">
+  <title>FireApp — Manutenzione Antincendio</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23073524'/><text y='.9em' font-size='80' x='10'>🔥</text></svg>">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+
+<!-- ============================= LOGIN ============================= -->
+<div id="page-login">
+  <div class="login-container">
+    <div class="login-logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C8.5 5 6 8.5 6 12a6 6 0 0012 0c0-1.5-.5-3-1.5-4.5C15 9 14 10.5 13 11c.5-3-1-6.5-1-9z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <h1>FireApp</h1>
+      <p>Gestione manutenzione antincendio</p>
+    </div>
+
+    <form id="form-login" class="login-form" autocomplete="on">
+      <div class="field">
+        <label for="input-email">Email</label>
+        <input id="input-email" type="email" placeholder="tecnico@azienda.it" autocomplete="email" required>
+      </div>
+      <div class="field">
+        <label for="input-password">Password</label>
+        <input id="input-password" type="password" placeholder="••••••••" autocomplete="current-password" required>
+      </div>
+      <div class="login-error" id="login-error"></div>
+      <button type="submit" class="btn-primary" id="btn-login">Accedi</button>
+      <button type="button" class="btn-text" style="width:100%;margin-top:8px;color:var(--gray-500);font-size:13px" onclick="showResetPasswordModal()">Password dimenticata?</button>
+    </form>
+  </div>
+</div>
+
+<!-- ============================= APP SHELL ============================= -->
+<div id="app" class="hidden">
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="btn-back hidden" id="btn-back" onclick="goBack()" aria-label="Indietro">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="topbar-info">
+        <div class="topbar-title" id="topbar-title">Dashboard</div>
+        <div class="topbar-subtitle" id="topbar-subtitle"></div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="user-badge" id="user-badge" role="button" aria-label="Profilo utente">–</div>
+    </div>
+  </header>
+
+  <!-- SCREENS -->
+  <main class="screens">
+
+    <!-- ─── DASHBOARD ─── -->
+    <section id="screen-dashboard" class="screen active" aria-label="Dashboard">
+      <div class="content">
+        <div class="greeting" id="greeting">Buongiorno</div>
+        <div class="kpi-grid">
+          <div class="kpi ok" onclick="scrollToSection('today-interventions')" style="cursor:pointer">
+            <div class="kpi-val" id="kpi-oggi">–</div><div class="kpi-label">Oggi</div>
+          </div>
+          <div class="kpi warn" onclick="navigate('scadenzario')" style="cursor:pointer">
+            <div class="kpi-val" id="kpi-scadenze">–</div><div class="kpi-label">Scadenze</div>
+          </div>
+          <div class="kpi danger" onclick="navigate('scadenzario')" style="cursor:pointer">
+            <div class="kpi-val" id="kpi-anomalie">–</div><div class="kpi-label">Anomalie</div>
+          </div>
+          <div class="kpi" onclick="navigate('clienti')" style="cursor:pointer">
+            <div class="kpi-val" id="kpi-clienti">–</div><div class="kpi-label">Clienti</div>
+          </div>
+        </div>
+        <div id="trial-banner" style="display:none;background:#e0f2fe;border-left:3px solid #0369a1;border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#0c4a6e">Sei in periodo di <strong>prova gratuita</strong>. Passa a un piano per continuare dopo la scadenza. <button class="btn-text" style="font-size:13px;color:#0369a1;font-weight:700" onclick="showUpgradeModal('Il trial e scaduto o stai per esaurirlo.')">Scopri i piani →</button></div>
+        <div id="alerts-container"></div>
+        <!-- GRAFICI DASHBOARD -->
+        <div class="charts-row" id="charts-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div style="background:white;border:1px solid var(--gray-200);border-radius:12px;padding:14px">
+            <div style="font-size:12px;font-weight:700;color:var(--gray-500);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Interventi ultimi 6 mesi</div>
+            <div style="height:100px;position:relative"><canvas id="chart-interventi"></canvas></div>
+          </div>
+          <div style="background:white;border:1px solid var(--gray-200);border-radius:12px;padding:14px;display:flex;flex-direction:column;align-items:center">
+            <div style="font-size:12px;font-weight:700;color:var(--gray-500);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;align-self:flex-start">Conformita totale</div>
+            <div style="position:relative;height:80px;width:80px;margin:4px auto 0">
+              <canvas id="chart-esiti"></canvas>
+              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+                <span id="chart-esiti-pct" style="font-size:16px;font-weight:800;color:var(--green-700,#065f46)">—</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:6px;font-size:10px;color:var(--gray-500)">
+              <span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;border-radius:50%;background:#16a05e;display:inline-block"></span>Conf.</span>
+              <span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;border-radius:50%;background:#d97706;display:inline-block"></span>Anom.</span>
+              <span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;border-radius:50%;background:#dc2626;display:inline-block"></span>N/C</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-header">
+          <span>Interventi oggi</span>
+          <button class="btn-text" onclick="navigate('clienti')">Tutti i clienti →</button>
+        </div>
+        <div id="today-interventions"></div>
+      </div>
+      <!-- FAB -->
+      <div class="fab-container">
+        <button class="btn-primary fab" onclick="showNewInterventionModal()">
+          <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nuovo intervento
+        </button>
+      </div>
+    </section>
+
+    <!-- ─── CLIENTI ─── -->
+    <section id="screen-clienti" class="screen" aria-label="Clienti">
+      <div class="content">
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <div class="search-bar" style="flex:1;margin-bottom:0">
+            <input type="search" id="search-clienti" placeholder="Cerca cliente o città…" oninput="filterClienti(this.value)" autocomplete="off">
+          </div>
+          <button id="btn-import-csv" class="btn-secondary" style="display:none;align-items:center;gap:6px;padding:0 12px;font-size:13px;flex-shrink:0;white-space:nowrap" onclick="showImportCSVModal()">
+            <svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Importa CSV
+          </button>
+        </div>
+        <div id="clienti-list"></div>
+      </div>
+      <div class="fab-container" id="fab-nuovo-cliente">
+        <button class="btn-primary fab" onclick="showAddClientModal()">
+          <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nuovo cliente
+        </button>
+      </div>
+    </section>
+
+    <!-- ─── INTERVENTO ─── -->
+    <section id="screen-intervento" class="screen" aria-label="Intervento in corso">
+
+      <!-- Header fisso con nome cliente e progress -->
+      <div class="intervento-header">
+        <div class="client-name" id="interv-header-name">—</div>
+        <div class="interv-date" id="interv-header-date"></div>
+        <div class="progress-wrap"><div class="progress-fill" id="interv-progress-bar" style="width:0%"></div></div>
+        <div class="progress-label" id="interv-progress-label">0/0 controlli</div>
+      </div>
+
+      <!-- Tab per tipo impianto -->
+      <div class="intervento-tabs" id="intervento-tabs"></div>
+
+      <!-- Area checklist (viene popolata via JS) -->
+      <div class="content checklist-area" id="checklist-area"></div>
+
+      <!-- Pulsante Completa intervento -->
+      <div style="padding:0 16px 16px" id="btn-complete-wrap">
+        <button id="btn-complete-interv" class="btn-primary hidden" onclick="completeIntervention()">
+          Completa intervento e genera verbale
+        </button>
+      </div>
+
+    </section>
+
+    <!-- ─── SCADENZARIO ─── -->
+    <section id="screen-scadenzario" class="screen" aria-label="Scadenzario">
+      <div class="content">
+        <div class="filter-chips">
+          <button class="chip active" data-filter="all"     onclick="filterScadenze(this,'all')">Tutti</button>
+          <button class="chip"        data-filter="expired" onclick="filterScadenze(this,'expired')">Scaduti</button>
+          <button class="chip"        data-filter="soon"    onclick="filterScadenze(this,'soon')">Entro 30 gg</button>
+          <button class="chip"        data-filter="ok"      onclick="filterScadenze(this,'ok')">Futuri</button>
+        </div>
+        <div id="scadenzario-list"></div>
+      </div>
+    </section>
+
+    <!-- ─── VERBALI ─── -->
+    <section id="screen-verbali" class="screen" aria-label="Verbali">
+      <div class="content">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:12px" id="verbali-toolbar" style="display:none">
+          <button class="btn-secondary" style="font-size:13px;display:flex;align-items:center;gap:6px" onclick="exportVerbaliCSV()">
+            <svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Esporta CSV
+          </button>
+        </div>
+        <div id="verbali-list"></div>
+      </div>
+    </section>
+
+    <!-- ─── AGENDA ─── -->
+    <section id="screen-agenda" class="screen" aria-label="Agenda settimanale">
+      <div class="content">
+        <!-- Week navigator -->
+        <div class="agenda-nav">
+          <button class="btn-icon" onclick="agendaWeek(-1)" aria-label="Settimana precedente">
+            <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div id="agenda-week-label" style="font-size:14px;font-weight:700;color:var(--gray-800)"></div>
+          <button class="btn-icon" onclick="agendaWeek(+1)" aria-label="Settimana successiva">
+            <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+          <button class="btn-text" onclick="agendaGoToday()" style="font-size:12px;margin-left:4px">Oggi</button>
+        </div>
+        <!-- Days grid -->
+        <div id="agenda-days"></div>
+        <!-- Scadenze da pianificare -->
+        <div id="agenda-deadlines-section" style="margin-top:20px"></div>
+      </div>
+    </section>
+
+    <!-- ─── TEAM ─── -->
+    <section id="screen-team" class="screen" aria-label="Team">
+      <div class="content">
+        <div id="team-list"></div>
+      </div>
+      <div class="fab-container">
+        <button class="btn-primary fab" onclick="showInviteTechModal()">
+          <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Invita tecnico
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav" aria-label="Navigazione principale">
+    <button class="nav-item active" data-screen="dashboard" onclick="navigate('dashboard')" aria-label="Home">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      <span>Home</span>
+    </button>
+    <button class="nav-item" data-screen="clienti" onclick="navigate('clienti')" aria-label="Clienti">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      <span>Clienti</span>
+    </button>
+    <button class="nav-item" data-screen="agenda" onclick="navigate('agenda')" aria-label="Agenda">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/></svg>
+      <span>Agenda</span>
+    </button>
+    <button class="nav-item" data-screen="verbali" onclick="navigate('verbali')" aria-label="Verbali">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span>Verbali</span>
+    </button>
+    <button class="nav-item" data-screen="team" onclick="navigate('team')" aria-label="Team" style="display:none">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      <span>Team</span>
+    </button>
+  </nav>
+
+</div><!-- /app -->
+
+<!-- ============================= MODAL ============================= -->
+<div id="modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
+  <div id="modal-content" class="modal"></div>
+</div>
+
+<!-- ============================= TOAST ============================= -->
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+<!-- ============================= LOADING ============================= -->
+<div id="loading" class="loading-overlay hidden" role="progressbar" aria-label="Caricamento…">
+  <div class="spinner"></div>
+</div>
+
+<!-- ============================= SCRIPTS ============================= -->
+<!-- Supabase JS v2 -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
+<!-- jsPDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- App -->
+<script src="/js/app.js"></script>
+
+</body>
+</html>
