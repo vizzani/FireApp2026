@@ -401,6 +401,7 @@ function showPasswordUpdateModal() {
     </div>
     <div id="pwd-update-msg" style="font-size:13px;margin-bottom:10px;display:none"></div>
     <button class="btn-primary" onclick="updatePassword()">Salva nuova password</button>
+    <button class="btn-outline" onclick="closeModal()">Annulla</button>
   `);
 }
 
