@@ -380,10 +380,20 @@ async function sendResetPassword() {
   const { error } = await db.auth.resetPasswordForEmail(email, {
     redirectTo: window.location.origin + '/index.html',
   });
-  if (btn) { btn.disabled = false; btn.textContent = 'Invia link di reset'; }
-  if (error) { showToast('Errore: ' + error.message, 'error'); return; }
+  if (error) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Invia link di reset'; }
+    const msg = error.message?.toLowerCase() || '';
+    if (msg.includes('rate') || msg.includes('limit')) {
+      showToast('Troppi tentativi. Attendi qualche minuto e riprova.', 'error');
+    } else {
+      showToast('Errore: ' + error.message, 'error');
+    }
+    return;
+  }
+  // Successo: bottone resta disabilitato per evitare invii multipli
+  if (btn) { btn.textContent = 'Email inviata ✓'; }
   const msg = el('reset-msg');
-  if (msg) { msg.textContent = '✓ Email inviata! Controlla la tua casella (anche lo spam).'; msg.style.display = 'block'; }
+  if (msg) { msg.textContent = '✓ Email inviata! Controlla la casella (anche lo spam). Puoi chiudere questa finestra.'; msg.style.display = 'block'; }
 }
 
 function showPasswordUpdateModal() {
