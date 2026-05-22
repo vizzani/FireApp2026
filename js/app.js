@@ -33,8 +33,13 @@
 
 /* FireApp — app.js — v1.1 */
 
-const SUPABASE_URL      = 'https://bclfpawguqpwypahmzbk.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjbGZwYXdndXFwd3lwYWhtemJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyOTI1NjQsImV4cCI6MjA5MTg2ODU2NH0.ONgZu-n7oWJaQJ7V6P3MOpBD9eUYA0YimGDHyi7DLcI';
+const APP_CONFIG = window.FireAppConfig || {};
+const SUPABASE_URL = APP_CONFIG.supabaseUrl;
+const SUPABASE_ANON_KEY = APP_CONFIG.supabaseAnonKey;
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error('FireApp config mancante: carica /js/config.js prima di /js/app.js');
+}
 
 // ─── CHECKLISTS ────────────────────────────────────────────────────────────────
 const CHECKLISTS = {
@@ -155,6 +160,7 @@ let state = {
   scadenze: [],
   filter: 'all',
   navHistory: [],          // stack di navigazione per goBack()
+  deferredInstallPrompt: null,
 };
 
 function el(id) { return document.getElementById(id); }
@@ -163,6 +169,7 @@ function el(id) { return document.getElementById(id); }
 async function init() {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(console.warn);
   setupOfflineBanner();
+  setupInstallPrompt();
   loadLoginBranding(); // carica dati azienda nella schermata di login (non bloccante)
   const params = new URLSearchParams(location.search);
   if (params.get('action') === 'new-intervention') window._pendingAction = 'new-intervention';
@@ -211,6 +218,34 @@ function setupOfflineBanner() {
 }
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
+function setupInstallPrompt() {
+  window.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    state.deferredInstallPrompt = event;
+    const btn = el('btn-install-app');
+    if (btn) btn.classList.remove('hidden');
+  });
+  window.addEventListener('appinstalled', () => {
+    state.deferredInstallPrompt = null;
+    const btn = el('btn-install-app');
+    if (btn) btn.classList.add('hidden');
+    showToast('FireApp installata', 'success');
+  });
+}
+
+async function installApp() {
+  if (!state.deferredInstallPrompt) {
+    showToast('Se il browser lo consente, usa Installa app dal menu del browser.', 'error');
+    return;
+  }
+  state.deferredInstallPrompt.prompt();
+  const choice = await state.deferredInstallPrompt.userChoice;
+  state.deferredInstallPrompt = null;
+  const btn = el('btn-install-app');
+  if (btn) btn.classList.add('hidden');
+  if (choice?.outcome === 'accepted') showToast('Installazione avviata', 'success');
+}
+
 function isAdmin() {
   return state.profile?.role === 'admin' || state.profile?.role === 'superadmin';
 }
@@ -490,11 +525,13 @@ async function loadDashboard() {
     const todayIntervQuery = db.from('interventions').select('*, clients(name, city)').eq('date', today).eq('organization_id', state.org?.id);
     // Tecnico: vede solo i propri interventi. Admin: vede tutti dell'org.
     if (!isAdmin()) todayIntervQuery.eq('technician_id', state.user.id);
-    const [{ data: todayInterv }, { data: scadenze }, { data: anomalies }, { count: clientiCount }] = await Promise.all([
+    const [{ data: todayInterv }, { data: scadenze }, { data: anomalies }, { count: clientiCount }, { count: equipmentCount }, { count: interventionCount }] = await Promise.all([
       todayIntervQuery,
-      db.from('schedules').select('*').lte('next_date', addDays(today, 30)).eq('organization_id', state.org?.id).eq('status', 'scheduled'),
+      db.from('schedules').select('*, clients(name, city)').lte('next_date', addDays(today, 30)).eq('organization_id', state.org?.id).eq('status', 'scheduled'),
       clientIds.length ? db.from('anomalies').select('*').eq('resolved', false).in('client_id', clientIds) : Promise.resolve({ data: [] }),
       db.from('clients').select('*', { count: 'exact', head: true }).eq('organization_id', state.org?.id),
+      clientIds.length ? db.from('equipment').select('*', { count: 'exact', head: true }).in('client_id', clientIds) : Promise.resolve({ count: 0 }),
+      db.from('interventions').select('*', { count: 'exact', head: true }).eq('organization_id', state.org?.id),
     ]);
     el('kpi-oggi').textContent = todayInterv?.length ?? 0;
     el('kpi-scadenze').textContent = scadenze?.length ?? 0;
@@ -508,6 +545,11 @@ async function loadDashboard() {
     const h = new Date().getHours();
     const greeting = h < 12 ? 'Buongiorno' : h < 18 ? 'Buon pomeriggio' : 'Buonasera';
     el('greeting').textContent = greeting + (state.profile?.full_name ? ', ' + state.profile.full_name.split(' ')[0] : '');
+    renderOnboarding({
+      clientiCount: clientiCount || 0,
+      equipmentCount: equipmentCount || 0,
+      interventionCount: interventionCount || 0,
+    });
     renderDashboardAlerts(scadenze, anomalies, today);
     renderTodayInterventions(todayInterv || []);
     state.clients = await fetchClients();
@@ -517,15 +559,84 @@ async function loadDashboard() {
     checkAndNotifyDeadlines(scadenze || []);
   } catch (err) {
     console.error('Dashboard error:', err);
-    showToast('Errore nel caricamento dati', 'error');
+    showDbError(err, 'Errore nel caricamento dati');
   } finally {
     showLoading(false);
   }
 }
 
+function renderOnboarding(counts) {
+  const cont = el('onboarding-card');
+  if (!cont) return;
+  const steps = [
+    { done: !!state.org?.id, label: 'Azienda creata', action: null },
+    { done: counts.clientiCount > 0, label: 'Primo cliente inserito', action: 'showAddClientModal()' },
+    { done: counts.equipmentCount > 0, label: 'Primo impianto aggiunto', action: counts.clientiCount > 0 ? 'navigate(\'clienti\')' : 'showAddClientModal()' },
+    { done: counts.interventionCount > 0, label: 'Primo intervento avviato', action: counts.equipmentCount > 0 ? 'showNewInterventionModal()' : 'navigate(\'clienti\')' },
+  ];
+  const done = steps.filter(s => s.done).length;
+  if (done === steps.length) {
+    cont.innerHTML = '';
+    return;
+  }
+  const next = steps.find(s => !s.done);
+  const stepHtml = steps.map((s, index) =>
+    '<div class="onboarding-step' + (s.done ? ' done' : '') + '">' +
+      '<span class="onboarding-step-dot">' + (s.done ? 'OK' : index + 1) + '</span>' +
+      '<span>' + s.label + '</span>' +
+    '</div>'
+  ).join('');
+  const action = next?.action
+    ? '<button class="btn-primary" onclick="' + next.action + '">Continua setup</button>'
+    : '';
+  cont.innerHTML =
+    '<div class="onboarding-card">' +
+      '<div class="onboarding-head">' +
+        '<div><div class="onboarding-title">Setup iniziale FireApp</div>' +
+        '<div class="onboarding-sub">Completa i passaggi base per lavorare senza attriti.</div></div>' +
+        '<div class="onboarding-progress">' + done + '/4</div>' +
+      '</div>' +
+      '<div class="onboarding-steps">' + stepHtml + '</div>' +
+      '<div class="onboarding-actions">' + action +
+        '<button class="btn-secondary" onclick="this.closest(\'.onboarding-card\').style.display=\'none\'">Nascondi</button>' +
+      '</div>' +
+    '</div>';
+}
+
 function renderDashboardAlerts(scadenze, anomalies, today) {
   const cont = el('alerts-container');
   cont.innerHTML = '';
+  const overdueNew = (scadenze || []).filter(s => s.next_date < today);
+  const soonNew = (scadenze || []).filter(s => { const d = daysBetween(today, s.next_date); return d >= 0 && d <= 7; });
+  const criticalNew = (anomalies || []).filter(a => a.severity === 'critical' || a.severity === 'high');
+  const items = [];
+  if (overdueNew.length) {
+    const first = overdueNew[0];
+    items.push({ type: 'red', title: 'Manutenzioni scadute', sub: overdueNew.length + ' da recuperare' + (first?.clients?.name ? ' - prima: ' + esc(first.clients.name) : ''), pill: overdueNew.length });
+  }
+  if (soonNew.length) {
+    const first = soonNew[0];
+    items.push({ type: 'amber', title: 'Scadenze entro 7 giorni', sub: soonNew.length + ' da pianificare' + (first?.clients?.name ? ' - prima: ' + esc(first.clients.name) : ''), pill: soonNew.length });
+  }
+  if (criticalNew.length) {
+    items.push({ type: 'purple', title: 'Anomalie urgenti aperte', sub: 'Da chiudere o trasformare in intervento correttivo', pill: criticalNew.length });
+  }
+  if (!items.length) {
+    cont.innerHTML = '<div class="alert alert-green"><strong>Tutto sotto controllo</strong>Nessuna urgenza operativa nei prossimi giorni.</div>';
+    return;
+  }
+  cont.innerHTML =
+    '<div class="ops-panel">' +
+      '<div class="ops-head"><div><div class="ops-title">Priorita operative</div>' +
+      '<div class="ops-sub">Le cose da guardare prima di iniziare la giornata.</div></div></div>' +
+      '<div class="ops-list">' + items.map(item =>
+        '<div class="ops-item" onclick="navigate(\'scadenzario\')">' +
+          '<div><strong>' + esc(item.title) + '</strong><span>' + item.sub + '</span></div>' +
+          '<div class="ops-pill ' + item.type + '">' + item.pill + '</div>' +
+        '</div>'
+      ).join('') + '</div>' +
+    '</div>';
+  return;
   const overdue = (scadenze || []).filter(s => s.next_date < today);
   if (overdue.length > 0) cont.innerHTML += '<div class="alert alert-red" style="cursor:pointer" onclick="navigate(\'scadenzario\')"><strong>Manutenzioni scadute (' + overdue.length + ')</strong> — tocca per vedere</div>';
   const critical = (anomalies || []).filter(a => a.severity === 'critical' || a.severity === 'high');
@@ -541,7 +652,7 @@ function renderTodayInterventions(interventions) {
     return;
   }
   cont.innerHTML = interventions.map(inv => {
-    const tags = (inv.equipment_types || []).map(t => '<span class="badge badge-blue">' + (EQ_TYPE_LABELS[t] || t) + '</span>').join('');
+    const tags = (inv.equipment_types || []).map(t => '<span class="badge badge-blue">' + esc(EQ_TYPE_LABELS[t] || t) + '</span>').join('');
     const isCompleted = inv.status === 'completed' || inv.status === 'signed';
     const isActive = inv.status === 'draft' || inv.status === 'in_progress';
     const completedHint = isCompleted
@@ -556,8 +667,8 @@ function renderTodayInterventions(interventions) {
         'Lavora</button></div>'
       : '';
     return '<div class="card" onclick="openIntervention(\'' + inv.id + '\')">' +
-      '<div class="card-header"><div><div class="card-title">' + (inv.clients?.name || '—') + '</div>' +
-      '<div class="card-sub">' + (inv.clients?.city || '') + ' - ' + inv.type + '</div></div>' +
+      '<div class="card-header"><div><div class="card-title">' + esc(inv.clients?.name || '-') + '</div>' +
+      '<div class="card-sub">' + esc(inv.clients?.city || '') + ' - ' + esc(inv.type) + '</div></div>' +
       statusBadge(inv.status) + '</div>' +
       '<div class="card-tags">' + tags + '</div>' + completedHint + lavoraBtn + '</div>';
   }).join('');
@@ -571,9 +682,49 @@ async function fetchClients() {
 
 async function loadClienti() {
   showLoading(true);
-  state.clients = await fetchClients();
-  renderClienti(state.clients);
-  showLoading(false);
+  try {
+    state.clients = await fetchClients();
+    await enrichClientsForSearch();
+    renderClienti(state.clients);
+  } catch (error) {
+    showDbError(error, 'Errore nel caricamento clienti');
+  } finally {
+    showLoading(false);
+  }
+}
+
+async function enrichClientsForSearch() {
+  const ids = state.clients.map(c => c.id);
+  if (!ids.length) return;
+  const [{ data: equipment }, { data: schedules }] = await Promise.all([
+    db.from('equipment').select('client_id,type,label,serial_number,location').in('client_id', ids),
+    db.from('schedules').select('client_id,equipment_type,maintenance_type,next_date,status').eq('organization_id', state.org?.id).neq('status', 'completed'),
+  ]);
+  const equipmentByClient = {};
+  (equipment || []).forEach(item => {
+    if (!equipmentByClient[item.client_id]) equipmentByClient[item.client_id] = [];
+    equipmentByClient[item.client_id].push(item);
+  });
+  const schedulesByClient = {};
+  (schedules || []).forEach(item => {
+    if (!schedulesByClient[item.client_id]) schedulesByClient[item.client_id] = [];
+    schedulesByClient[item.client_id].push(item);
+  });
+  state.clients = state.clients.map(client => {
+    const clientEquipment = equipmentByClient[client.id] || [];
+    const clientSchedules = (schedulesByClient[client.id] || []).sort((a, b) => String(a.next_date).localeCompare(String(b.next_date)));
+    const searchParts = [
+      client.name, client.address, client.city, client.province, client.email, client.phone, client.category, client.notes,
+      ...clientEquipment.flatMap(e => [e.type, EQ_TYPE_LABELS[e.type], e.label, e.serial_number, e.location]),
+      ...clientSchedules.flatMap(s => [s.equipment_type, EQ_TYPE_LABELS[s.equipment_type], s.maintenance_type, s.next_date]),
+    ];
+    return {
+      ...client,
+      _equipmentCount: clientEquipment.length,
+      _nextDeadline: clientSchedules[0]?.next_date || null,
+      _searchText: normalizeSearch(searchParts.filter(Boolean).join(' ')),
+    };
+  });
 }
 
 function renderClienti(clients) {
@@ -586,15 +737,31 @@ function renderClienti(clients) {
     const icon = categoryIcon(c.category);
     return '<div class="row-item" onclick="openClient(\'' + c.id + '\')">' +
       '<div class="row-icon" style="background:' + icon.bg + '">' + icon.svg + '</div>' +
-      '<div class="row-body"><div class="row-title">' + c.name + '</div>' +
-      '<div class="row-desc">' + [c.address, c.city].filter(Boolean).join(' - ') + '</div></div>' +
+      '<div class="row-body"><div class="row-title">' + esc(c.name) + '</div>' +
+      '<div class="row-desc">' + esc([c.address, c.city].filter(Boolean).join(' - ')) + '</div>' +
+      '<div class="client-search-meta">' +
+        (c._equipmentCount ? '<span class="badge badge-blue">' + c._equipmentCount + ' impianti</span>' : '') +
+        (c._nextDeadline ? '<span class="badge badge-amber">Prossima ' + formatDate(c._nextDeadline) + '</span>' : '') +
+      '</div></div>' +
       '<div class="row-right"><svg class="row-chevron" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div></div>';
   }).join('') + '</div>';
 }
 
 function filterClienti(query) {
-  const q = query.toLowerCase();
-  renderClienti(state.clients.filter(c => c.name.toLowerCase().includes(q) || (c.city || '').toLowerCase().includes(q)));
+  const q = normalizeSearch(query);
+  if (!q) {
+    renderClienti(state.clients);
+    return;
+  }
+  renderClienti(state.clients.filter(c => (c._searchText || normalizeSearch([c.name, c.city, c.address].filter(Boolean).join(' '))).includes(q)));
+}
+
+function normalizeSearch(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
 }
 
 // ─── APRI CLIENTE (modal con info + impianti + interventi) ────────────────────
@@ -732,7 +899,7 @@ async function saveEditClient(clientId) {
     notes: el('ec-notes')?.value.trim() || null,
   }).eq('id', clientId);
   showLoading(false);
-  if (error) { showToast('Errore nel salvataggio', 'error'); return; }
+  if (error) { showDbError(error, 'Errore nel salvataggio cliente'); return; }
   // Aggiorna lo state locale
   const idx = state.clients.findIndex(c => c.id === clientId);
   if (idx >= 0) {
@@ -808,7 +975,7 @@ async function saveEquipment(clientId, equipId) {
     ({ error } = await db.from('equipment').insert(payload));
   }
   showLoading(false);
-  if (error) { showToast('Errore nel salvataggio', 'error'); return; }
+  if (error) { showDbError(error, 'Errore nel salvataggio impianto'); return; }
   showToast(equipId ? 'Impianto aggiornato' : 'Impianto aggiunto', 'success');
   await openClient(clientId);
 }
@@ -819,7 +986,7 @@ async function deleteEquipment(equipId, clientId) {
   showLoading(true);
   const { error } = await db.from('equipment').delete().eq('id', equipId);
   showLoading(false);
-  if (error) { showToast('Errore nell\'eliminazione', 'error'); return; }
+  if (error) { showDbError(error, 'Errore nell\'eliminazione impianto'); return; }
   showToast('Impianto eliminato', 'success');
   await openClient(clientId);
 }
@@ -861,7 +1028,7 @@ async function saveNewClient() {
     category: el('f-cat')?.value || 'commerciale',
   });
   showLoading(false);
-  if (error) { showToast('Errore nel salvataggio', 'error'); return; }
+  if (error) { showDbError(error, 'Errore nel salvataggio cliente'); return; }
   closeModal();
   showToast('Cliente aggiunto', 'success');
   await loadClienti();
@@ -916,7 +1083,7 @@ async function createIntervention() {
     report_number: reportNum,
   }).select().single();
   showLoading(false);
-  if (error || !data) { showToast('Errore nella creazione', 'error'); return; }
+  if (error || !data) { showDbError(error, 'Errore nella creazione intervento'); return; }
   closeModal();
   await openIntervention(data.id);
 }
@@ -1278,8 +1445,8 @@ function renderScadenzario(scadenze, filter) {
         const dotCls = isOver ? 'dot-red' : s.next_date <= in30 ? 'dot-amber' : 'dot-green';
         const dateStr = new Date(s.next_date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
         return '<div class="scad-item"><div class="scad-dot ' + dotCls + '"></div>' +
-          '<div class="scad-body"><div class="scad-title">' + (s.clients?.name || '—') + ' - ' + capitalize(s.equipment_type) + '</div>' +
-          '<div class="scad-sub">' + capitalize(s.maintenance_type) + ' - ' + (s.clients?.city || '') + '</div></div>' +
+          '<div class="scad-body"><div class="scad-title">' + esc(s.clients?.name || '-') + ' - ' + esc(capitalize(s.equipment_type)) + '</div>' +
+          '<div class="scad-sub">' + esc(capitalize(s.maintenance_type)) + ' - ' + esc(s.clients?.city || '') + '</div></div>' +
           '<div class="scad-date' + (isOver ? ' overdue' : '') + '">' + dateStr + '</div></div>';
       }).join('') + '</div>';
   }).join('');
@@ -1304,12 +1471,12 @@ async function loadVerbali() {
   cont.innerHTML = data.map(inv =>
     '<div class="verbale-item" onclick="showVerbaleDetail(\'' + inv.id + '\')">' +
     '<div class="verbale-header"><div>' +
-    '<div class="verbale-number">Verbale n. ' + (inv.report_number || '—') + '</div>' +
-    '<div class="verbale-date">' + formatDate(inv.date) + ' - ' + inv.type + '</div>' +
+    '<div class="verbale-number">Verbale n. ' + esc(inv.report_number || '-') + '</div>' +
+    '<div class="verbale-date">' + formatDate(inv.date) + ' - ' + esc(inv.type) + '</div>' +
     '</div>' + statusBadge(inv.outcome || inv.status) + '</div>' +
-    '<div class="verbale-client">' + (inv.clients?.name || '—') + '</div>' +
+    '<div class="verbale-client">' + esc(inv.clients?.name || '-') + '</div>' +
     '<div class="verbale-footer">' +
-    '<span style="font-size:12px;color:var(--gray-500)">' + (inv.equipment_types || []).map(t => EQ_TYPE_LABELS[t] || t).join(', ') + '</span>' +
+    '<span style="font-size:12px;color:var(--gray-500)">' + esc((inv.equipment_types || []).map(t => EQ_TYPE_LABELS[t] || t).join(', ')) + '</span>' +
     '<button class="btn-text" onclick="event.stopPropagation();generatePDF(\'' + inv.id + '\')">Scarica PDF</button>' +
     '</div></div>'
   ).join('');
@@ -1443,7 +1610,7 @@ async function generatePDFBlob(interventionId) {
     const token = session?.access_token;
     if (token && navigator.onLine) {
       const res = await fetch(
-        'https://bclfpawguqpwypahmzbk.supabase.co/functions/v1/generate-verbale-pdf',
+        APP_CONFIG.edgeFunctions?.generateVerbalePdf,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
@@ -1804,6 +1971,40 @@ function showToast(msg, type) {
   toastTimer = setTimeout(() => toast.classList.add('hidden'), 2800);
 }
 
+function friendlyDbError(error, fallback) {
+  const raw = [
+    error?.message,
+    error?.details,
+    error?.hint,
+    error?.code,
+  ].filter(Boolean).join(' ').toLowerCase();
+  if (!raw) return fallback || 'Operazione non riuscita';
+  if (raw.includes('row-level security') || raw.includes('rls') || raw.includes('permission denied') || raw.includes('42501')) {
+    return 'Permesso negato da Supabase: verifica ruolo, azienda associata e policy RLS.';
+  }
+  if (raw.includes('jwt') || raw.includes('session') || raw.includes('not authenticated')) {
+    return 'Sessione scaduta o non valida: esci e accedi di nuovo.';
+  }
+  if (raw.includes('duplicate') || raw.includes('23505')) {
+    return 'Dato gia presente: controlla eventuali duplicati.';
+  }
+  if (raw.includes('foreign key') || raw.includes('23503')) {
+    return 'Dato collegato mancante: ricarica la pagina e riprova.';
+  }
+  if (raw.includes('not-null') || raw.includes('23502')) {
+    return 'Manca un campo obbligatorio.';
+  }
+  if (raw.includes('failed to fetch') || raw.includes('network')) {
+    return 'Connessione assente o instabile: riprova quando sei online.';
+  }
+  return fallback ? fallback + ': ' + (error?.message || '') : (error?.message || 'Operazione non riuscita');
+}
+
+function showDbError(error, fallback) {
+  console.warn('[Supabase]', fallback || 'Errore', error);
+  showToast(friendlyDbError(error, fallback), 'error');
+}
+
 function showLoading(show) {
   el('loading').classList.toggle('hidden', !show);
 }
@@ -1872,7 +2073,7 @@ async function saveTeamMemberRole(memberId) {
   showLoading(true);
   const { error } = await db.from('profiles').update({ role }).eq('id', memberId);
   showLoading(false);
-  if (error) { showToast('Errore nel salvataggio', 'error'); return; }
+  if (error) { showDbError(error, 'Errore nel salvataggio ruolo'); return; }
   closeModal();
   showToast('Ruolo aggiornato', 'success');
   loadTeam();
@@ -1884,7 +2085,7 @@ async function removeTeamMember(memberId, name) {
   showLoading(true);
   const { error } = await db.from('profiles').update({ organization_id: null, role: 'technician' }).eq('id', memberId);
   showLoading(false);
-  if (error) { showToast('Errore', 'error'); return; }
+  if (error) { showDbError(error, 'Errore nella rimozione membro'); return; }
   closeModal();
   showToast(name + ' rimosso dal team', 'success');
   loadTeam();
@@ -1960,7 +2161,7 @@ async function createPresaInCarico(clientId) {
     report_number: reportNum,
   }).select().single();
   showLoading(false);
-  if (error || !data) { showToast('Errore nella creazione', 'error'); return; }
+  if (error || !data) { showDbError(error, 'Errore nella creazione presa in carico'); return; }
   closeModal();
   showToast('Presa in carico avviata', 'success');
   await openIntervention(data.id);
@@ -2133,7 +2334,7 @@ async function saveOrgSettings() {
   if (!state.org?.id) { showToast('Organizzazione non caricata — ricarica la pagina', 'error'); showLoading(false); return; }
   const { error } = await db.from('organizations').update(updates).eq('id', state.org.id);
   showLoading(false);
-  if (error) { showToast('Errore nel salvataggio', 'error'); return; }
+  if (error) { showDbError(error, 'Errore nel salvataggio impostazioni'); return; }
   Object.assign(state.org, updates);
   closeModal();
   showToast('Impostazioni salvate', 'success');
@@ -2191,19 +2392,22 @@ async function exportVerbaliCSV() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function showEquipmentQR(equipId, typeLabel) {
-  const baseUrl = 'https://fireapp-five.vercel.app';
+  const baseUrl = APP_CONFIG.publicBaseUrl || window.location.origin;
   const pageUrl = baseUrl + '/equipment.html?id=' + equipId;
   const qrApiUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=073524&bgcolor=ffffff&qzone=1&data=' + encodeURIComponent(pageUrl);
+  const safeTypeLabel = esc(typeLabel);
+  const safePageUrl = esc(pageUrl);
+  const safeQrApiUrl = esc(qrApiUrl);
 
   showModal(
     '<div class="modal-handle"></div>' +
-    '<div class="modal-title">QR Scheda ' + typeLabel + '</div>' +
+    '<div class="modal-title">QR Scheda ' + safeTypeLabel + '</div>' +
     '<p style="font-size:14px;color:var(--gray-600);margin-bottom:16px">Scansiona per vedere lo stato aggiornato dell\'impianto. Stampa e apponi fisicamente all\'impianto.</p>' +
     '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:16px">' +
-    '<img id="qr-img" src="' + qrApiUrl + '" width="200" height="200" ' +
+    '<img id="qr-img" src="' + safeQrApiUrl + '" width="200" height="200" ' +
     'style="border:4px solid white;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,.12)" ' +
-    'data-url="' + pageUrl + '" data-label="' + typeLabel + '" data-apiurl="' + qrApiUrl + '">' +
-    '<div style="font-size:11px;color:var(--gray-400);text-align:center;max-width:220px;word-break:break-all">' + pageUrl + '</div>' +
+    'data-url="' + safePageUrl + '" data-label="' + safeTypeLabel + '" data-apiurl="' + safeQrApiUrl + '">' +
+    '<div style="font-size:11px;color:var(--gray-400);text-align:center;max-width:220px;word-break:break-all">' + safePageUrl + '</div>' +
     '</div>' +
     '<div style="display:flex;gap:8px">' +
     '<button class="btn-primary" style="flex:1" onclick="downloadQR()">Scarica QR</button>' +
@@ -2332,7 +2536,7 @@ function checkAndNotifyDeadlines(scadenze) {
   if (overdue.length > 0) {
     new Notification('FireApp — Manutenzioni scadute', {
       body: overdue.length + ' manutenzioni sono scadute e richiedono attenzione.',
-      icon: '/icons/icon-192.png',
+      icon: '/icon-192.png',
       tag:  'fireapp-overdue',
       data: { url: '/?screen=scadenzario' },
     });
@@ -2340,7 +2544,7 @@ function checkAndNotifyDeadlines(scadenze) {
     const first = thisWeek[0];
     new Notification('FireApp — Scadenze in arrivo', {
       body: thisWeek.length + ' scadenza/e nei prossimi 7 giorni. Prima: ' + (first.clients?.name || '') + '.',
-      icon: '/icons/icon-192.png',
+      icon: '/icon-192.png',
       tag:  'fireapp-upcoming',
       data: { url: '/?screen=scadenzario' },
     });

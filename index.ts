@@ -15,6 +15,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function htmlEscape(value: unknown) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 Deno.serve(async (req: Request) => {
   // Preflight CORS
   if (req.method === 'OPTIONS') {
@@ -30,11 +39,27 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Inizializza Supabase con service role key (accesso completo ai dati)
+    const authHeader = req.headers.get('Authorization') || '';
+    const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'Autenticazione richiesta' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Inizializza Supabase con service role key, poi valida comunque il JWT utente.
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
+
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    const user = userData?.user;
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: 'Sessione non valida o scaduta' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     // Recupera dati intervento
     const { data: inv, error: invError } = await supabase
@@ -46,6 +71,23 @@ Deno.serve(async (req: Request) => {
     if (invError || !inv) {
       return new Response(JSON.stringify({ error: 'Intervento non trovato' }), {
         status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, organization_id, role')
+      .eq('id', user.id)
+      .single();
+
+    const canAccessIntervention =
+      !profileError &&
+      profile &&
+      (profile.role === 'superadmin' || profile.organization_id === inv.organization_id);
+
+    if (!canAccessIntervention) {
+      return new Response(JSON.stringify({ error: 'Non autorizzato per questa organizzazione' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
@@ -111,8 +153,8 @@ Deno.serve(async (req: Request) => {
     <!-- Header verde -->
     <div style="background:#073524;padding:28px 32px">
       <p style="color:rgba(255,255,255,.6);font-size:13px;margin:0 0 4px">Verbale di manutenzione antincendio</p>
-      <h1 style="color:white;font-size:22px;font-weight:700;margin:0">n. ${inv.report_number || '—'}</h1>
-      <p style="color:rgba(255,255,255,.5);font-size:13px;margin:6px 0 0">${inv.organizations?.name || ''}</p>
+      <h1 style="color:white;font-size:22px;font-weight:700;margin:0">n. ${htmlEscape(inv.report_number || '—')}</h1>
+      <p style="color:rgba(255,255,255,.5);font-size:13px;margin:6px 0 0">${htmlEscape(inv.organizations?.name || '')}</p>
     </div>
 
     <!-- Body -->
@@ -126,7 +168,7 @@ Deno.serve(async (req: Request) => {
       <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
         <tr>
           <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#9ca3af;width:40%">Cliente</td>
-          <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;font-weight:600;color:#111827">${inv.clients?.name || '—'}</td>
+          <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;font-weight:600;color:#111827">${htmlEscape(inv.clients?.name || '—')}</td>
         </tr>
         <tr>
           <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#9ca3af">Indirizzo</td>
@@ -138,7 +180,7 @@ Deno.serve(async (req: Request) => {
         </tr>
         <tr>
           <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#9ca3af">Impianti verificati</td>
-          <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#374151">${impiantiStr}</td>
+          <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#374151">${htmlEscape(impiantiStr)}</td>
         </tr>
         <tr>
           <td style="padding:8px 0;font-size:13px;color:#9ca3af">Tecnico</td>
@@ -160,7 +202,7 @@ Deno.serve(async (req: Request) => {
       <hr style="border:none;border-top:1px solid #f3f4f6;margin:24px 0">
       <p style="font-size:12px;color:#9ca3af;margin:0">
         Questo verbale è stato generato automaticamente da FireApp.<br>
-        Per informazioni contattare ${inv.organizations?.name || 'il manutentore'}.
+        Per informazioni contattare ${htmlEscape(inv.organizations?.name || 'il manutentore')}.
       </p>
     </div>
   </div>
@@ -184,7 +226,7 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify({
         from: 'FireApp <noreply@tuodominio.it>',  // ← cambia con il tuo dominio verificato in Resend
         to: [recipient_email],
-        subject: `Verbale manutenzione antincendio n. ${inv.report_number} — ${inv.clients?.name || ''}`,
+        subject: `Verbale manutenzione antincendio n. ${inv.report_number || ''} - ${inv.clients?.name || ''}`,
         html: emailHtml,
       }),
     });

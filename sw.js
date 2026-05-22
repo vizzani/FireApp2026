@@ -4,8 +4,11 @@ const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/css/app.css',
+  '/js/config.js',
   '/js/app.js',
   '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png',
 ];
 
 // ─── INSTALL ──────────────────────────────────────────────────────────────────
