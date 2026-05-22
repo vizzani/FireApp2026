@@ -776,7 +776,7 @@ async function openClient(clientId) {
   showLoading(true);
   const [{ data: equip }, { data: lastInterv }] = await Promise.all([
     db.from('equipment').select('*').eq('client_id', clientId).order('type'),
-    db.from('interventions').select('*').eq('client_id', clientId).order('date', { ascending: false }).limit(5),
+    db.from('interventions').select('*').eq('client_id', clientId).order('date', { ascending: false }).limit(8),
   ]);
   showLoading(false);
   state.currentEquipment = equip || [];
@@ -811,7 +811,7 @@ function renderClientModal(client, equip, interventions) {
           : '';
         return '<div class=\"equip-item\">' +
           '<div class=\"equip-info\">' +
-          '<div class=\"equip-name\"><strong>' + (EQ_TYPE_LABELS[e.type] || e.type) + '</strong> &times; ' + e.quantity + p6badge + '</div>' +
+          '<div class=\"equip-name\"><strong>' + esc(EQ_TYPE_LABELS[e.type] || e.type) + '</strong> &times; ' + esc(e.quantity) + p6badge + '</div>' +
           '<div style=\"font-size:12px;color:var(--gray-500)\">' + [brandStr, e.location, dateStr].filter(Boolean).join(' · ') + '</div>' +
           '</div>' + editBtns + (qrTypes.includes(e.type) && !adminActions ? '<div class="equip-actions">' + qrBtn + '</div>' : '') + '</div>';
       }).join('')
@@ -831,17 +831,20 @@ function renderClientModal(client, equip, interventions) {
           : '';
         return '<div class="row-item" onclick="closeModal();openIntervention(\'' + i.id + '\')">' +
           '<div class="row-body"><div class="row-title">' + formatDate(i.date) + ' — ' + capitalize(i.type) + '</div>' +
-          '<div class="row-desc">n. ' + (i.report_number || 'Bozza') + '</div>' + hint + lavoraBtn + '</div>' +
+          '<div class="row-desc">n. ' + esc(i.report_number || 'Bozza') + '</div>' + hint + lavoraBtn + '</div>' +
           statusBadge(i.outcome || i.status) + '</div>';
       }).join('')
     : '<div style="padding:10px 0;font-size:13px;color:var(--gray-500)">Nessun intervento registrato</div>';
 
   const infoLine = [client.address, client.city, client.province].filter(Boolean).join(', ');
+  const allInterventionsBtn = interventions.length
+    ? '<button class="btn-text" onclick="showClientInterventionHistory(\'' + client.id + '\')">Vedi registro completo</button>'
+    : '';
 
   showModal(
     '<div class="modal-handle"></div>' +
     '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px">' +
-    '<div class="modal-title" style="margin-bottom:0">' + client.name + '</div>' +
+    '<div class="modal-title" style="margin-bottom:0">' + esc(client.name) + '</div>' +
     (adminActions ? '<button class="btn-secondary" style="padding:6px 12px;font-size:12px;flex-shrink:0;margin-left:10px" onclick="showEditClientModal(\'' + client.id + '\')">Modifica</button>' : '') +
     '</div>' +
     '<p style="font-size:13px;color:var(--gray-500);margin-bottom:18px">' + (infoLine || 'Indirizzo non inserito') + (client.email ? ' · ' + client.email : '') + '</p>' +
@@ -852,7 +855,7 @@ function renderClientModal(client, equip, interventions) {
     '</div>' +
     '<div id="equip-list-modal">' + equipHtml + '</div>' +
 
-    '<div class="section-header" style="margin-top:18px;margin-bottom:8px"><span>Ultimi interventi</span></div>' +
+    '<div class="section-header" style="margin-top:18px;margin-bottom:8px"><span>Registro interventi</span>' + allInterventionsBtn + '</div>' +
     '<div class="row-list" style="margin-bottom:14px">' + intervHtml + '</div>' +
 
     '<button class="btn-primary" onclick="closeModal();showNewInterventionModal(\'' + client.id + '\')">+ Nuovo intervento</button>' +
@@ -862,6 +865,39 @@ function renderClientModal(client, equip, interventions) {
 }
 
 // ─── MODIFICA CLIENTE ─────────────────────────────────────────────────────────
+async function showClientInterventionHistory(clientId) {
+  const client = state.clients.find(c => c.id === clientId) || { id: clientId, name: 'Cliente' };
+  showLoading(true);
+  const { data, error } = await db
+    .from('interventions')
+    .select('*')
+    .eq('client_id', clientId)
+    .order('date', { ascending: false })
+    .limit(50);
+  showLoading(false);
+  if (error) { showDbError(error, 'Errore nel registro interventi'); return; }
+  const rows = (data || []).length
+    ? data.map(i => {
+        const eq = (i.equipment_types || []).map(t => EQ_TYPE_LABELS[t] || t).join(', ');
+        const openAction = (i.status === 'completed' || i.status === 'signed') ? 'showVerbaleDetail' : 'openIntervention';
+        return '<div class="row-item" onclick="closeModal();' + openAction + '(\'' + i.id + '\')">' +
+          '<div class="row-body">' +
+            '<div class="row-title">' + formatDate(i.date) + ' - ' + esc(capitalize(i.type)) + '</div>' +
+            '<div class="row-desc">n. ' + esc(i.report_number || 'Bozza') + (eq ? ' - ' + esc(eq) : '') + '</div>' +
+          '</div>' +
+          statusBadge(i.outcome || i.status) +
+        '</div>';
+      }).join('')
+    : '<div style="padding:12px;font-size:13px;color:var(--gray-500)">Nessun intervento registrato</div>';
+  showModal(
+    '<div class="modal-handle"></div>' +
+    '<div class="modal-title">Registro interventi</div>' +
+    '<p style="font-size:13px;color:var(--gray-500);margin-bottom:14px">' + esc(client.name || 'Cliente') + '</p>' +
+    '<div class="row-list" style="margin-bottom:14px">' + rows + '</div>' +
+    '<button class="btn-outline" onclick="openClient(\'' + clientId + '\')">Torna al cliente</button>'
+  );
+}
+
 function showEditClientModal(clientId) {
   if (!isAdmin()) { showToast('Operazione riservata agli admin', 'error'); return; }
   const client = state.clients.find(c => c.id === clientId) || {};
@@ -1489,19 +1525,26 @@ async function showVerbaleDetail(interventionId) {
     db.from('interventions').select('*, clients(name, address, city, email), profiles(full_name, cert_number)').eq('id', interventionId).single(),
     db.from('anomalies').select('*').eq('intervention_id', interventionId),
   ]);
+  const anomaliesWithPhotos = await enrichAnomaliesWithPhotoUrls(anom || []);
   showLoading(false);
   if (!inv) return;
 
   const clientEmail = inv.clients?.email || '';
   const impianti = (inv.equipment_types || []).map(t => EQ_TYPE_LABELS[t] || t).join(', ');
-  const anomHtml = anom?.length
+  const anomHtml = anomaliesWithPhotos.length
     ? '<div style="background:#fef2f2;border-left:3px solid #dc2626;border-radius:0 8px 8px 0;padding:10px 12px;margin-top:14px">' +
-      '<div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:8px">Anomalie rilevate (' + anom.length + ')</div>' +
-      anom.map(a => {
+      '<div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:8px">Anomalie rilevate (' + anomaliesWithPhotos.length + ')</div>' +
+      anomaliesWithPhotos.map(a => {
         const sevLabel = { critical:'Critica', high:'Alta', medium:'Media', low:'Bassa' }[a.severity] || '';
+        const photoHtml = a._signedPhotoUrl
+          ? '<button type="button" onclick="showImagePreview(\'' + esc(a._signedPhotoUrl) + '\')" style="margin-top:8px;border:0;background:transparent;padding:0;display:block;width:100%">' +
+            '<img src="' + esc(a._signedPhotoUrl) + '" alt="Foto anomalia" style="width:100%;max-height:160px;object-fit:cover;border-radius:8px;border:1px solid #fecaca">' +
+            '</button>'
+          : '';
         return '<div style="font-size:12px;color:var(--gray-700);padding:4px 0;border-bottom:1px solid #fecaca">' +
-          '<strong>' + capitalize(a.equipment_type) + '</strong> · ' + sevLabel + '<br>' +
-          '<span style="color:var(--gray-600)">' + a.description + '</span>' +
+          '<strong>' + esc(capitalize(a.equipment_type)) + '</strong> - ' + esc(sevLabel) + '<br>' +
+          '<span style="color:var(--gray-600)">' + esc(a.description) + '</span>' +
+          photoHtml +
           '</div>';
       }).join('') + '</div>'
     : '';
@@ -1540,6 +1583,28 @@ function infoRow(label, value) {
 }
 
 // ─── INVIO EMAIL VERBALE ──────────────────────────────────────────────────────
+async function enrichAnomaliesWithPhotoUrls(anomalies) {
+  return Promise.all((anomalies || []).map(async anomaly => {
+    if (!anomaly.photo_url) return anomaly;
+    try {
+      const { data } = await db.storage.from('reports').createSignedUrl(anomaly.photo_url, 300);
+      return { ...anomaly, _signedPhotoUrl: data?.signedUrl || '' };
+    } catch (error) {
+      console.warn('[Anomaly photo]', error);
+      return anomaly;
+    }
+  }));
+}
+
+function showImagePreview(url) {
+  showModal(
+    '<div class="modal-handle"></div>' +
+    '<div class="modal-title">Foto anomalia</div>' +
+    '<img src="' + esc(url) + '" alt="Foto anomalia" style="width:100%;border-radius:10px;border:1px solid var(--gray-200);margin-bottom:12px">' +
+    '<button class="btn-outline" onclick="closeModal()">Chiudi</button>'
+  );
+}
+
 function showSendEmailModal(interventionId, prefilledEmail) {
   showModal(
     '<div class="modal-handle"></div>' +
