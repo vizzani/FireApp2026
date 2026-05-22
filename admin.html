@@ -144,10 +144,6 @@ tr:hover td{background:#fafafa;cursor:pointer}
     <p>Pannello di gestione clienti SaaS</p>
     <div class="field"><label>Email</label><input type="email" id="adm-email" placeholder="admin@fireapp.it" onkeydown="if(event.key==='Enter')adminLogin()"></div>
     <div class="field"><label>Password account</label><input type="password" id="adm-pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')adminLogin()"></div>
-    <div class="field" style="margin-top:8px;padding-top:14px;border-top:1px solid var(--border)">
-      <label style="color:var(--ink-muted);font-size:12px">PASSWORD PANNELLO ADMIN</label>
-      <input type="password" id="adm-panel-pwd" placeholder="Password riservata FireApp" onkeydown="if(event.key==='Enter')adminLogin()">
-    </div>
     <button class="btn-login" onclick="adminLogin()">Accedi</button>
     <div class="login-err" id="adm-err"></div>
   </div>
@@ -246,22 +242,11 @@ let activeFilter = 'all';
 let currentOrg = null;
 
 // AUTH
-// Password di accesso al pannello admin (doppia autenticazione)
-// Cambia questo valore per impostare una password diversa
-const ADMIN_PANEL_PASSWORD = 'FireAdmin2026!';
-
 async function adminLogin() {
   const email   = document.getElementById('adm-email').value.trim();
   const pwd     = document.getElementById('adm-pwd').value;
-  const panelPwd = document.getElementById('adm-panel-pwd')?.value || '';
   const errEl   = document.getElementById('adm-err');
   errEl.textContent = '';
-
-  // Verifica password pannello (indipendente da Supabase Auth)
-  if (panelPwd !== ADMIN_PANEL_PASSWORD) {
-    errEl.textContent = 'Password pannello errata.';
-    return;
-  }
 
   const { data, error } = await db.auth.signInWithPassword({ email, password: pwd });
   if (error) { errEl.textContent = 'Credenziali account non valide'; return; }
@@ -276,7 +261,7 @@ async function adminLogin() {
     return;
   }
 
-  if (roleData !== 'admin' && roleData !== 'superadmin') {
+  if (roleData !== 'superadmin') {
     await db.auth.signOut();
     errEl.innerHTML = 'Ruolo non autorizzato (ruolo attuale: <strong>' + roleData + '</strong>).<br><small>Esegui in Supabase SQL Editor:<br><code>UPDATE profiles SET role=\'superadmin\' WHERE id=(SELECT id FROM auth.users WHERE email=\'' + email + '\');</code></small>';
     return;
