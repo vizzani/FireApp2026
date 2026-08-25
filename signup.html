@@ -112,15 +112,15 @@ a{color:inherit;text-decoration:none}
 }
 </style>
 
-<!-- Iubenda Privacy Policy — sostituisci XXXXXXXX con il tuo Policy ID -->
+<!-- Iubenda Privacy Policy — configurare i propri Site ID e Policy ID -->
 <script type="text/javascript">
   var _iub = _iub || [];
   _iub.csConfiguration = {
     "askConsentAtCookiePolicyUpdate": true,
     "lang": "it",
     "perPurposeConsent": true,
-    "siteId": 0000000, // ← sostituisci con il tuo Site ID iubenda
-    "cookiePolicyId": 0000000, // ← sostituisci con il tuo Policy ID
+    "siteId": 0000000, // TODO: sostituisci con il tuo Site ID iubenda
+    "cookiePolicyId": 0000000, // TODO: sostituisci con il tuo Policy ID iubenda
     "banner": {
       "acceptButtonDisplay": true,
       "closeButtonRejects": true,
@@ -183,6 +183,13 @@ a{color:inherit;text-decoration:none}
           <div class="field">
             <label>Nome azienda *</label>
             <input type="text" id="f-company" placeholder="Es. Rossi Antincendio Srl" autocomplete="organization" required>
+          <script>
+            // Nascondi campo azienda se è un invito a team esistente
+            if (_joinOrgId) {
+              document.currentScript.closest('.form-field').style.display = 'none';
+              document.currentScript.closest('.form-field').querySelector('input').removeAttribute('required');
+            }
+          </script>
             <div class="field-error" id="err-company">Inserisci il nome dell'azienda</div>
           </div>
 
@@ -232,7 +239,7 @@ a{color:inherit;text-decoration:none}
             <input type="checkbox" id="f-terms" required>
             <label for="f-terms">
               Ho letto e accetto i <a href="/termini.html" target="_blank">Termini di servizio</a>
-              e la <a href="https://www.iubenda.com/privacy-policy/XXXXXXXX" target="_blank" class="iubenda-nostyle iubenda-noiframe">Privacy Policy</a>.
+              e la <a href="#" onclick="alert('Privacy Policy non ancora configurata. Contatta l\'amministratore.')" class="iubenda-nostyle iubenda-noiframe">Privacy Policy</a>.
               I dati inseriti saranno trattati da FireApp in qualità di titolare del trattamento
               ai sensi del Regolamento UE 2016/679 (GDPR).
             </label>
@@ -266,6 +273,12 @@ a{color:inherit;text-decoration:none}
         </div>
         <h2 id="success-title">Account creato!</h2>
         <p id="success-msg">Il tuo account è pronto. Hai <strong>30 giorni gratuiti</strong> per esplorare tutte le funzionalità.<br><br>Inizia aggiungendo il tuo primo cliente.</p>
+        <script>
+          if (_joinOrgId) {
+            document.getElementById('success-title').textContent = 'Benvenuto nel team!';
+            document.getElementById('success-msg').innerHTML = 'Il tuo account è stato collegato al team.<br><br>Puoi accedere subito a FireApp con le credenziali che hai appena creato.';
+          }
+        </script>
         <a href="/index.html" class="btn-go">Entra in FireApp →</a>
       </div>
 
@@ -274,15 +287,12 @@ a{color:inherit;text-decoration:none}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/js/config.js"></script>
 <script>
-const APP_CONFIG = window.FireAppConfig || {};
-const SUPABASE_URL = APP_CONFIG.supabaseUrl;
-const SUPABASE_ANON_KEY = APP_CONFIG.supabaseAnonKey;
+// ── CONFIGURA QUI ─────────────────────────────────────────
+const SUPABASE_URL      = 'https://bclfpawguqpwypahmzbk.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjbGZwYXdndXFwd3lwYWhtemJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyOTI1NjQsImV4cCI6MjA5MTg2ODU2NH0.ONgZu-n7oWJaQJ7V6P3MOpBD9eUYA0YimGDHyi7DLcI';
+// ──────────────────────────────────────────────────────────
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error('FireApp signup config mancante: carica /js/config.js prima dello script signup.');
-}
 const { createClient } = window.supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -380,8 +390,26 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
       }
       return;
     }
-    // 2. Crea nuova organizzazione
-    const { data: setupData, error: setupError } = await db.rpc('setup_new_organization', {
+
+    // 2a. Flusso INVITO: unisciti a team esistente
+    if (_joinOrgId) {
+      const { data: joinData, error: joinError } = await db.rpc('join_organization', {
+        p_org_id:    _joinOrgId,
+        p_user_id:   authData.user.id,
+        p_full_name: fullName,
+      });
+      if (joinError) {
+        showError('Errore nel collegamento al team: ' + joinError.message);
+        return;
+      }
+      const joinResult = typeof joinData === 'string' ? JSON.parse(joinData) : joinData;
+      if (!joinResult.success) {
+        showError(joinResult.error || 'Impossibile unirsi al team. Il link potrebbe essere scaduto o non valido.');
+        return;
+      }
+    } else {
+      // 2b. Flusso NORMALE: crea nuova organizzazione
+      const { data: setupData, error: setupError } = await db.rpc('setup_new_organization', {
         p_org_name:  company,
         p_full_name: fullName,
         p_user_id:   authData.user.id,
@@ -396,6 +424,7 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
         showError(result.error || 'Errore nella configurazione.');
         return;
       }
+    }
 
     // 3. Successo
     document.getElementById('form-view').style.display = 'none';

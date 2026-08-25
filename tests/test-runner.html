@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FireApp — Test Suite</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface-2: #232733;
+    --border: #2e3344;
+    --text: #e4e5ea;
+    --text-dim: #8b8fa3;
+    --green: #22c55e;
+    --green-bg: #052e16;
+    --red: #ef4444;
+    --red-bg: #450a0a;
+    --amber: #f59e0b;
+    --amber-bg: #451a03;
+    --blue: #3b82f6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+    min-height: 100vh;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  header h1 span { color: var(--green); }
+
+  #run-btn {
+    background: var(--green);
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: opacity .15s;
+  }
+  #run-btn:hover { opacity: .85; }
+  #run-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* Summary cards */
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+  }
+  .summary-card .val {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.1;
+  }
+  .summary-card .lbl {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+  .summary-card.passed .val { color: var(--green); }
+  .summary-card.failed .val { color: var(--red); }
+  .summary-card.skipped .val { color: var(--amber); }
+  .summary-card.total .val { color: var(--blue); }
+
+  /* Progress bar */
+  .progress-bar {
+    height: 6px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    margin-bottom: 24px;
+    overflow: hidden;
+    display: flex;
+  }
+  .progress-bar .seg-passed { background: var(--green); height: 100%; transition: width .3s; }
+  .progress-bar .seg-failed { background: var(--red); height: 100%; transition: width .3s; }
+  .progress-bar .seg-skipped { background: var(--amber); height: 100%; transition: width .3s; }
+
+  /* Duration */
+  .duration {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+
+  /* Results table */
+  .results-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .results-table thead th {
+    text-align: left;
+    padding: 10px 12px;
+    background: var(--surface);
+    border-bottom: 2px solid var(--border);
+    color: var(--text-dim);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    position: sticky;
+    top: 0;
+  }
+  .results-table tbody tr {
+    border-bottom: 1px solid var(--border);
+  }
+  .results-table tbody tr:hover {
+    background: var(--surface);
+  }
+  .results-table td {
+    padding: 8px 12px;
+    vertical-align: top;
+  }
+  .results-table .cat-row td {
+    background: var(--surface-2);
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--text-dim);
+    padding: 10px 12px;
+  }
+
+  /* Status badges */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .badge.pass { background: var(--green-bg); color: var(--green); }
+  .badge.fail { background: var(--red-bg); color: var(--red); }
+  .badge.skip { background: var(--amber-bg); color: var(--amber); }
+
+  .detail-msg {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+    word-break: break-word;
+  }
+  .detail-msg.err { color: var(--red); }
+
+  /* Idle state */
+  #idle-msg {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+    font-size: 14px;
+  }
+  #idle-msg .icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+    opacity: .5;
+  }
+
+  /* Scrollable area */
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🔥 <span>FireApp</span> Test Suite</h1>
+  <button id="run-btn" onclick="window.runAllTests()">▶ Run Tests</button>
+</header>
+
+<div class="summary" id="summary" style="display:none">
+  <div class="summary-card total"><div class="val" id="s-total">0</div><div class="lbl">Total</div></div>
+  <div class="summary-card passed"><div class="val" id="s-passed">0</div><div class="lbl">Passed</div></div>
+  <div class="summary-card failed"><div class="val" id="s-failed">0</div><div class="lbl">Failed</div></div>
+  <div class="summary-card skipped"><div class="val" id="s-skipped">0</div><div class="lbl">Skipped</div></div>
+</div>
+
+<div class="progress-bar" id="progress-bar" style="display:none">
+  <div class="seg-passed" id="prog-passed" style="width:0%"></div>
+  <div class="seg-failed" id="prog-failed" style="width:0%"></div>
+  <div class="seg-skipped" id="prog-skipped" style="width:0%"></div>
+</div>
+
+<div class="duration" id="duration" style="display:none"></div>
+
+<div id="idle-msg">
+  <div class="icon">🧪</div>
+  Press <strong>Run Tests</strong> to start the test suite.<br>
+  Tests run against the loaded app globals (no server required for offline tests).
+</div>
+
+<div class="table-wrap" id="table-wrap" style="display:none">
+  <table class="results-table">
+    <thead>
+      <tr>
+        <th style="width:40px">#</th>
+        <th>Test</th>
+        <th style="width:90px">Status</th>
+        <th>Details</th>
+      </tr>
+    </thead>
+    <tbody id="results-body"></tbody>
+  </table>
+</div>
+
+<!-- Load Supabase CDN (required by app.js) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
+<!-- Load jsPDF CDN (required by app.js) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- Load the app -->
+<script src="/js/app.js"></script>
+<!-- Load tests (defines window.runAllTests) -->
+<script src="tests.js"></script>
+
+</body>
+</html>
