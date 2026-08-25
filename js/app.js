@@ -1547,7 +1547,7 @@ const lines = doc.splitTextToSize(item.desc, 138);
 doc.text(lines, M + 5, y);
 doc.setFont(‘helvetica’, ‘italic’); doc.setTextColor(120, 120, 120);
 doc.text(item.norm, M + 5, y + lines.length * 4);
-doc.setFillColor(…statusCol);
+doc.setFillColor(...statusCol);
 doc.roundedRect(W - M - 18, y - 4, 18, 8, 2, 2, ‘F’);
 doc.setTextColor(255, 255, 255); doc.setFont(‘helvetica’, ‘bold’); doc.setFontSize(7);
 doc.text(statusTxt, W - M - 9, y + 0.5, { align: ‘center’ });

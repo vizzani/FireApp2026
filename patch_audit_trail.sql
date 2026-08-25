@@ -24,8 +24,14 @@ CREATE TABLE IF NOT EXISTS audit_log (
 -- ------------------------------------------------------------
 ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "audit_own_org" ON audit_log
-  FOR ALL USING (organization_id = my_org_id());
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname = 'audit_own_org' AND tablename = 'audit_log'
+  ) THEN
+    CREATE POLICY "audit_own_org" ON audit_log
+      FOR ALL USING (organization_id = my_org_id());
+  END IF;
+END $$;
 
 -- ------------------------------------------------------------
 -- 3. Funzione helper: inserisce un record di audit
